@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="2048" height="2048" style="shape-rendering:geometricPrecision;text-rendering:geometricPrecision;image-rendering:optimizeQuality;fill-rule:evenodd;clip-rule:evenodd">
+  <defs>
+    <style>
+      .fil0 { fill: none; }
+      .white-border { stroke: white; stroke-width: 10; } /* Added stroke styles */
+    </style>
+  </defs>
+  <g id="Layer_x0020_1">
+    <g id="_388177552">
+      <path id="_388174360" class="fil0" d="M0 0h2048v2048H0z" />
+      <path id="_388174480" class="fil0" d="M255.999 255.999h1536v1536h-1536z" />
+    </g>
+    <path style="fill:#424242;fill-rule:nonzero;" class="white-border" d="m1052.59 378.09 154.85 463.502 495.37 8.78 89.19 1.581-71.64 52.961-393 290.516 144.77 473.95 26.02 85.2-72.5-51.76-397.75-283.99-405.987 284.11-73.106 51.16 26.865-85.07 147.15-465.95-395.619-298.284-71.204-53.687 89.227-.737 488.528-4.037 161.451-468.481 29.095-84.44z" />
+  </g>
+</svg>
