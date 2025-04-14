@@ -25,12 +25,18 @@ export const MultiplayerProvider = ({ children }) => {
     const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5002';
     console.log('Connecting to server at:', serverUrl);
     
+    // Check if we're connecting to Render
+    const isRenderConnection = serverUrl.includes('onrender.com');
+    console.log('Connecting to Render hosted server:', isRenderConnection);
+    
     try {
       // Make sure the serverUrl is used exactly as provided from env
       const socketInstance = io(serverUrl, {
         withCredentials: true,
-        reconnectionAttempts: 5,
-        timeout: 10000,
+        reconnectionAttempts: isRenderConnection ? 15 : 10, // More attempts for Render
+        reconnectionDelay: isRenderConnection ? 5000 : 3000, // Longer initial delay for Render
+        reconnectionDelayMax: 15000, // Increased from 10000 to 15000
+        timeout: isRenderConnection ? 30000 : 20000, // Longer timeout for Render
         transports: ['websocket', 'polling'],
         // Explicitly set secure to true for HTTPS connections
         secure: serverUrl.startsWith('https'),
@@ -38,21 +44,50 @@ export const MultiplayerProvider = ({ children }) => {
         path: '/socket.io/',
         autoConnect: true,
         // Add debug mode to see more detailed logs
-        debug: true
+        debug: true,
+        forceNew: false,
+        // Add ping options to prevent timeout
+        pingTimeout: isRenderConnection ? 60000 : 30000, // Longer ping timeout for Render
+        pingInterval: isRenderConnection ? 20000 : 25000, // More frequent pings for Render
       });
       
       console.log('Socket instance created with options:', {
         url: serverUrl,
         secure: serverUrl.startsWith('https'),
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        isRenderConnection,
+        pingTimeout: isRenderConnection ? 60000 : 30000,
+        reconnectionAttempts: isRenderConnection ? 15 : 10
       });
       
       setSocket(socketInstance);
+      
+      // Add Render-specific event listener for transport errors
+      if (isRenderConnection) {
+        socketInstance.io.engine.on('transport_error', (error) => {
+          console.error('Transport error:', error);
+          setTimeout(() => {
+            console.log('Attempting transport recovery after error');
+            socketInstance.io.engine.close();
+            socketInstance.connect();
+          }, 3000);
+        });
+      }
       
       // Add some test events to diagnose
       socketInstance.io.on("error", (error) => {
         console.error("Socket.io manager error:", error);
         setConnectionError(`IO manager error: ${error.message}`);
+        
+        // Add automatic reconnection logic
+        if (error.message.includes('timeout')) {
+          console.log('Attempting to reconnect after timeout...');
+          setTimeout(() => {
+            if (socketInstance && !socketInstance.connected) {
+              socketInstance.connect();
+            }
+          }, 3000);
+        }
       });
       
       socketInstance.io.on("reconnect_attempt", (attempt) => {
@@ -92,8 +127,20 @@ export const MultiplayerProvider = ({ children }) => {
       console.log('Connection diagnostics:', {
         readyState: socket.io.engine?.transport?.ws?.readyState,
         transport: socket.io.engine?.transport?.name,
-        hostname: window.location.hostname
+        hostname: window.location.hostname,
+        protocol: window.location.protocol,
+        networkType: navigator.connection ? navigator.connection.effectiveType : 'unknown'
       });
+      
+      // Force reconnect after delay if still disconnected
+      if (error.message.includes('timeout')) {
+        setTimeout(() => {
+          if (socket && !socket.connected) {
+            console.log('Forcing reconnection after timeout...');
+            socket.connect();
+          }
+        }, 5000);
+      }
     });
     
     socket.on('disconnect', (reason) => {
@@ -306,6 +353,23 @@ export const MultiplayerProvider = ({ children }) => {
     }]);
   };
   
+  // Add a new function to handle manual reconnection
+  const reconnectToServer = () => {
+    if (socket) {
+      console.log('Manual reconnection attempt...');
+      // First close any existing connection
+      socket.close();
+      // Attempt to reconnect
+      setTimeout(() => {
+        socket.connect();
+      }, 1000);
+      
+      setConnectionError('Attempting to reconnect...');
+      return true;
+    }
+    return false;
+  };
+  
   const value = {
     socket,
     isConnected,
@@ -321,7 +385,8 @@ export const MultiplayerProvider = ({ children }) => {
     cancelMatchmaking,
     makeMove,
     leaveGame,
-    sendChatMessage
+    sendChatMessage,
+    reconnectToServer
   };
   
   return (

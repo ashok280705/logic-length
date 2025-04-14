@@ -46,12 +46,39 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Add this section for Render specific configuration
+// Check if we're on Render platform
+const isRender = process.env.RENDER === 'true' || process.env.RENDER_EXTERNAL_URL;
+console.log('Running on Render:', isRender);
+
+if (isRender) {
+  // Set keepAliveTimeout higher than Render's load balancer timeout
+  server.keepAliveTimeout = 65000; // 65 seconds
+  server.headersTimeout = 66000; // slightly more than keepAliveTimeout
+  console.log('Set server timeouts for Render platform');
+}
+
 const io = new Server(server, {
   cors: {
-    origin: ['https://your-frontend-domain.com', 'http://localhost:5173', '*'], // Add your frontend domain here
+    origin: process.env.NODE_ENV === 'production' 
+      ? [process.env.RENDER_EXTERNAL_URL || "https://logiclen.vercel.app", "https://logiclen.vercel.app"] 
+      : ["http://localhost:3000", "http://127.0.0.1:3000"],
     methods: ["GET", "POST"],
     credentials: true
-  }
+  },
+  pingTimeout: 60000, // Increase ping timeout to 60 seconds (was 30000)
+  pingInterval: 25000, // Ping clients every 25 seconds
+  transports: ['websocket', 'polling'], // Support both transport methods
+  connectTimeout: 30000, // Increase connection timeout to 30 seconds (was 20000)
+  allowUpgrades: true, // Allow transport upgrades
+  maxHttpBufferSize: 1e8, // Increase buffer size for larger payloads
+  path: '/socket.io/', // Explicit path to avoid issues
+  reconnectionAttempts: 5, // Allow 5 reconnection attempts
+  reconnectionDelay: 1000, // Start with 1 second delay
+  reconnectionDelayMax: 10000, // Maximum 10 seconds between reconnection attempts
+  autoConnect: true,
+  forceNew: false,
 });
 
 // Modified initialization with async IIFE
@@ -215,7 +242,32 @@ function setupSocketIO() {
   const waitingPlayers = new Map(); // Store players waiting for a match
 
   io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
+    console.log('New client connected with ID:', socket.id);
+    
+    // Log connection details for debugging
+    console.log('Connection details:', {
+      transport: socket.conn.transport.name,
+      remoteAddress: socket.handshake.address,
+      userAgent: socket.handshake.headers['user-agent'],
+      time: new Date().toISOString()
+    });
+    
+    // Set up heartbeat to detect disconnects earlier
+    const heartbeat = setInterval(() => {
+      socket.volatile.emit('ping', { timestamp: Date.now() });
+    }, 25000);
+    
+    // Handle unexpected disconnects
+    socket.on('disconnect', (reason) => {
+      console.log(`Client ${socket.id} disconnected. Reason: ${reason}`);
+      clearInterval(heartbeat);
+      handlePlayerDisconnect(socket.id);
+    });
+    
+    // Add a reconnect event handler
+    socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`Client ${socket.id} reconnection attempt #${attemptNumber}`);
+    });
     
     // When a user joins the matchmaking queue
     socket.on('join_matchmaking', (userData) => {
@@ -336,24 +388,6 @@ function setupSocketIO() {
     // When a player leaves a game
     socket.on('leave_game', ({ roomId }) => {
       handlePlayerLeave(socket, roomId);
-    });
-    
-    // When a player disconnects
-    socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.id);
-      
-      // Remove from waiting players if applicable
-      if (waitingPlayers.has(socket.id)) {
-        waitingPlayers.delete(socket.id);
-      }
-      
-      // Handle leaving any active games
-      for (const [roomId, game] of activeGames.entries()) {
-        if (game.players.some(p => p.socketId === socket.id)) {
-          handlePlayerLeave(socket, roomId);
-          break;
-        }
-      }
     });
   });
 }
