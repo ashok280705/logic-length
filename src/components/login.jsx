@@ -19,7 +19,7 @@ const Login = ({ setUser }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setPageLoading(false);
-    }, 1500);
+    }, 1000); // Reduced from 1500ms to 1000ms for faster loading
     
     return () => clearTimeout(timer);
   }, []);
@@ -35,63 +35,101 @@ const Login = ({ setUser }) => {
   // Get the appropriate server URL based on environment
   const getServerUrl = () => {
     const isLocalDevelopment = window.location.hostname === 'localhost';
-    return isLocalDevelopment ? 'http://localhost:5002' : 'https://logic-length.onrender.com';
+    const prodUrl = 'https://logic-length.onrender.com';
+    
+    console.log(`Using ${isLocalDevelopment ? 'local development' : 'production'} server URL`);
+    return isLocalDevelopment ? 'http://localhost:5002' : prodUrl;
   };
 
-  // Handle Login
+  // Configure a pre-configured axios instance with longer timeout for Render
+  const getAxiosInstance = (timeoutMs = 30000) => {
+    const instance = axios.create({
+      baseURL: getServerUrl(),
+      timeout: timeoutMs,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    // Log all requests
+    instance.interceptors.request.use(
+      config => {
+        console.log(`${config.method.toUpperCase()} request to ${config.url}`, config.data);
+        return config;
+      },
+      error => {
+        console.error('Request error:', error);
+        return Promise.reject(error);
+      }
+    );
+    
+    return instance;
+  };
+
+  // Handle Login with retry
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    try {
-      console.log("Starting login process for:", formData.username);
-      
-      // Use absolute URL to avoid any path issues
-      const serverUrl = getServerUrl();
-      const loginUrl = `${serverUrl}/api/auth/login`;
-      
-      console.log("Making login request to:", loginUrl);
-      
-      // Use axios with explicit configuration
-      const response = await axios({
-        method: 'post',
-        url: loginUrl,
-        data: {
+    setError("");
+    
+    console.log(`Login attempt for user: ${formData.username}`);
+    
+    const maxRetries = 2;
+    let retryCount = 0;
+    let success = false;
+    
+    while (retryCount <= maxRetries && !success) {
+      try {
+        if (retryCount > 0) {
+          console.log(`Retry attempt ${retryCount}/${maxRetries} for login...`);
+          setError(`Connection attempt ${retryCount}/${maxRetries}... Please wait.`);
+          // Add a small delay between retries
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        const axiosInstance = getAxiosInstance(30000); // 30 second timeout
+        const response = await axiosInstance.post('/api/auth/login', {
           username: formData.username,
           password: formData.password
-        },
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 15000 // 15 seconds
-      });
-      
-      console.log("Login successful, response:", response.data);
-      
-      if (!response.data || !response.data.user) {
-        throw new Error("Invalid response format from server");
+        });
+        
+        console.log("Login response:", response.data);
+        
+        if (response.data && response.data.user) {
+          // Success!
+          localStorage.setItem("user", JSON.stringify(response.data));
+          setUser(response.data);
+          success = true;
+          navigate("/home");
+          return; // Exit the function on success
+        } else {
+          throw new Error("Invalid response format from server");
+        }
+      } catch (error) {
+        retryCount++;
+        console.error(`Login attempt ${retryCount} failed:`, error);
+        
+        // Only set error message on last retry or non-network errors
+        if (retryCount > maxRetries || (error.response && error.response.status !== 0)) {
+          if (error.response) {
+            setError(error.response.data?.message || "Login failed! Please check your credentials.");
+          } else if (error.request) {
+            setError("Server connection issue. Please try again in a few seconds.");
+          } else {
+            setError("Login failed: " + error.message);
+          }
+        }
       }
-      
-      localStorage.setItem("user", JSON.stringify(response.data));
-      setUser(response.data);
-      navigate("/home");
-    } catch (error) {
-      console.error("Login error:", error);
-      if (error.response) {
-        setError(error.response.data.message || "Login failed! Please check your credentials.");
-      } else if (error.request) {
-        setError("Server is not responding. Please check if it's running at " + serverUrl);
-      } else {
-        setError("Login failed! " + error.message);
-      }
-    } finally {
-      setIsLoading(false);
     }
+    
+    setIsLoading(false);
   };
 
-  // Handle Registration
+  // Handle Registration with retry
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
     
     // Enhanced form validation
     if (!formData.username || formData.username.length < 3) {
@@ -112,140 +150,130 @@ const Login = ({ setUser }) => {
       return;
     }
     
-    try {
-      console.log("Starting registration process for:", formData.username);
-      
-      // Use absolute URL to avoid any path issues
-      const serverUrl = getServerUrl();
-      const registerUrl = `${serverUrl}/api/auth/register`;
-      
-      console.log("Making registration request to:", registerUrl);
-      
-      // Use axios with explicit configuration
-      const response = await axios({
-        method: 'post',
-        url: registerUrl,
-        data: formData,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 20000 // 20 seconds for registration which might take longer
-      });
-      
-      console.log("Registration successful, response:", response.data);
-      setError("");
-      
-      // Show success message and auto-fill login form
-      alert("Registration successful! You can now login with your credentials.");
-      setIsLogin(true);
-      setFormData({ 
-        ...formData,
-        password: "" // Clear password but keep username for easy login
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      if (error.response) {
-        // The server responded with a status code outside the 2xx range
-        console.error("Error response data:", error.response.data);
-        console.error("Error response status:", error.response.status);
-        setError(error.response.data.message || "Registration failed! Please try again.");
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error("Error request:", error.request);
-        setError("Server is not responding. Please check if it's running at " + serverUrl);
-      } else {
-        // Something happened in setting up the request
-        console.error("Error message:", error.message);
-        setError("Registration failed! " + error.message);
+    console.log(`Registration attempt for user: ${formData.username}`);
+    
+    const maxRetries = 2;
+    let retryCount = 0;
+    let success = false;
+    
+    while (retryCount <= maxRetries && !success) {
+      try {
+        if (retryCount > 0) {
+          console.log(`Retry attempt ${retryCount}/${maxRetries} for registration...`);
+          setError(`Connection attempt ${retryCount}/${maxRetries}... Please wait.`);
+          // Add a small delay between retries
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        const axiosInstance = getAxiosInstance(40000); // 40 second timeout for registration
+        const response = await axiosInstance.post('/api/auth/register', formData);
+        
+        console.log("Registration response:", response.data);
+        setError("");
+        
+        // Show success message and auto-fill login form
+        alert("Registration successful! You can now login with your credentials.");
+        setIsLogin(true);
+        setFormData({ 
+          ...formData,
+          password: "" // Clear password but keep username for easy login
+        });
+        
+        success = true;
+        break;
+      } catch (error) {
+        retryCount++;
+        console.error(`Registration attempt ${retryCount} failed:`, error);
+        
+        // Only set error message on last retry or non-network errors
+        if (retryCount > maxRetries || (error.response && error.response.status !== 0)) {
+          if (error.response) {
+            console.error("Error response:", error.response.data);
+            setError(error.response.data?.message || "Registration failed! Please try again.");
+          } else if (error.request) {
+            setError("Server connection issue. Please try again in a few seconds.");
+          } else {
+            setError("Registration failed: " + error.message);
+          }
+        }
       }
-    } finally {
-      setIsLoading(false);
     }
+    
+    setIsLoading(false);
   };
 
-  // Google Sign-In Handler
+  // Google Sign-In Handler with simpler approach
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError("");
     
     try {
-      console.log("Initiating Google Sign-In from login component...");
+      console.log("Initiating Google Sign-In...");
       const googleUser = await signInWithGoogle();
       
       if (!googleUser) {
         throw new Error("Google Sign-In failed. Please try again.");
       }
 
-      console.log("Google Sign-In successful, processing user data:", googleUser);
+      console.log("Google Sign-In successful!");
       
-      // Create a minimal user object to ensure navigation works
-      const minimalUser = {
+      // Create a user object to ensure navigation works
+      const user = {
         ...googleUser,
-        coins: 50,
-        level: 1,
-        xp: 0,
-        transactions: []
+        user: {
+          id: googleUser.uid || googleUser.id,
+          username: googleUser.displayName,
+          email: googleUser.email,
+          coins: 50,
+          level: 1,
+          xp: 0,
+          transactions: []
+        },
+        token: googleUser.accessToken || "google-auth-token"
       };
       
-      // Set user in localStorage and state immediately to ensure navigation works
-      console.log("Setting minimal user data:", minimalUser);
-      localStorage.setItem("user", JSON.stringify(minimalUser));
-      setUser(minimalUser);
+      // Store user data and navigate
+      console.log("Setting user data:", user);
+      localStorage.setItem("user", JSON.stringify(user));
+      setUser(user);
       
-      // Navigate immediately (before API calls that might fail)
-      console.log("Navigating to home page with minimal user...");
+      // Navigate to home page
       navigate("/home", { replace: true });
       
-      // Then try API operations in the background
-      try {
-        // Log the data we're sending to the server
-        const googleAuthData = {
-          email: googleUser.email,
-          displayName: googleUser.username || googleUser.displayName,
-          googleId: googleUser.id || googleUser.uid,
-          photoURL: googleUser.photoURL
-        };
-        
-        console.log("Sending Google auth data to server:", googleAuthData);
-        
-        // Try to update user data in the background
-        setTimeout(async () => {
-          try {
-            // Use dynamic server URL
-            const serverUrl = getServerUrl();
-            const response = await axios.post(`${serverUrl}/api/auth/google-signin`, googleAuthData);
-            console.log("Background API call successful:", response?.data);
+      // Try to sync with backend in background
+      setTimeout(async () => {
+        try {
+          const axiosInstance = getAxiosInstance(20000);
+          console.log("Syncing Google user with backend...");
+          const response = await axiosInstance.post('/api/auth/google-signin', {
+            email: googleUser.email,
+            displayName: googleUser.displayName,
+            googleId: googleUser.uid || googleUser.id,
+            photoURL: googleUser.photoURL
+          });
+          
+          console.log("Backend sync successful:", response.data);
+          
+          // Update user data if needed
+          if (response.data && response.data.user) {
+            const updatedUser = {
+              ...user,
+              user: {
+                ...user.user,
+                ...response.data.user
+              }
+            };
             
-            if (response?.data?.success) {
-              // Update user data with server data
-              const existingUser = response.data.user;
-              const mergedUser = {
-                ...googleUser,
-                id: existingUser.id || googleUser.id || googleUser.uid,
-                username: existingUser.username || googleUser.username || googleUser.displayName,
-                coins: existingUser.coins || 0,
-                transactions: existingUser.transactions || [],
-                level: existingUser.level || 1,
-                xp: existingUser.xp || 0
-              };
-              
-              console.log("Updating user data in background:", mergedUser);
-              localStorage.setItem("user", JSON.stringify(mergedUser));
-              setUser(mergedUser);
-            }
-          } catch (backgroundError) {
-            console.error("Background API call failed:", backgroundError);
-            // User is already navigated to home, so no need to handle this error
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+            setUser(updatedUser);
           }
-        }, 1000);
-        
-      } catch (apiError) {
-        console.error("API error during Google sign-in:", apiError);
-        // User is already navigated, so no need to handle this error
-      }
+        } catch (error) {
+          console.error("Backend sync failed (continuing anyway):", error);
+        }
+      }, 1000);
     } catch (error) {
       console.error("Google Sign-In Error:", error);
-      setError(error.message || "Failed to sign in with Google. Please try again.");
+      setError("Failed to sign in with Google. Please try again.");
       setIsLoading(false);
     }
   };
@@ -410,61 +438,186 @@ const Login = ({ setUser }) => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Processing...
+                  {error && error.includes("Connection attempt") ? "Connecting..." : "Processing..."}
                 </>
               ) : (
                 <>{isLogin ? 'Sign In' : 'Sign Up'}</>
               )}
+              <div className="absolute inset-0 w-full h-full transition-all duration-300">
+                <div className="absolute left-0 top-0 h-full bg-white/10 w-8 transform -skew-x-12 animate-shimmer"></div>
+              </div>
             </button>
             
             <div className="relative flex items-center justify-center my-6">
               <div className="absolute left-0 right-0 h-[1px] bg-[#6320dd]/30"></div>
-              <span className="relative px-4 bg-gradient-to-b from-[#1a0050] to-[#09001a] text-[#b69fff]">or continue with</span>
+              <div className="px-4 bg-[#09001a] text-[#b69fff] text-sm relative z-10">OR</div>
             </div>
             
             <button 
               type="button" 
               onClick={handleGoogleSignIn}
-              className="w-full py-3 bg-white text-[#4285F4] rounded-lg font-semibold transition-all duration-300 hover:bg-gray-100 hover:shadow-md hover:shadow-[#6320dd]/30 border border-gray-300 flex items-center justify-center relative overflow-hidden"
               disabled={isLoading}
+              className="w-full py-3 bg-transparent text-white rounded-lg font-medium transition-all duration-300 hover:bg-white/5 flex items-center justify-center border border-[#6320dd]/50 hover:border-[#b69fff]/50 relative overflow-hidden"
             >
-              <span className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center bg-white">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-              </span>
-              <span className="ml-4">{isLoading ? 'Processing...' : 'Sign in with Google'}</span>
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <path
+                  fill="#EA4335"
+                  d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"
+                />
+                <path
+                  fill="#4A90E2"
+                  d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z"
+                />
+              </svg>
+              {isLoading ? "Please wait..." : "Continue with Google"}
             </button>
           </form>
           
-          {/* Toggle between login and signup */}
-          <div className="text-center mt-6 relative z-20">
-            <p className="text-[#b69fff] mb-3">
+          <div className="mt-6 text-center text-sm">
+            <p className="text-[#b69fff]">
               {isLogin ? "Don't have an account?" : "Already have an account?"}
+              <button 
+                type="button" 
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setError("");
+                  setFormData({
+                    username: "",
+                    password: "",
+                    email: ""
+                  });
+                }}
+                className="ml-1 text-[#8b5cf6] hover:text-white hover:underline transition-all duration-300 focus:outline-none"
+                disabled={isLoading}
+              >
+                {isLogin ? "Create one" : "Login here"}
+              </button>
             </p>
-            <button 
-              onClick={() => setIsLogin(!isLogin)} 
-              type="button"
-              className="px-6 py-2 bg-[#6320dd] text-white rounded-lg font-medium hover:bg-[#8b5cf6] focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-colors z-20 relative"
-            >
-              {isLogin ? 'Sign Up' : 'Sign In'}
-            </button>
           </div>
           
-          {/* Cyberpunk style corners */}
-          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#6320dd]"></div>
-          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#6320dd]"></div>
-          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#6320dd]"></div>
-          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#6320dd]"></div>
+          {/* Glowing corners */}
+          <div className="absolute w-[10px] h-[10px] top-0 left-0 border-t-2 border-l-2 border-[#6320dd] animate-pulse"></div>
+          <div className="absolute w-[10px] h-[10px] top-0 right-0 border-t-2 border-r-2 border-[#6320dd] animate-pulse"></div>
+          <div className="absolute w-[10px] h-[10px] bottom-0 left-0 border-b-2 border-l-2 border-[#6320dd] animate-pulse"></div>
+          <div className="absolute w-[10px] h-[10px] bottom-0 right-0 border-b-2 border-r-2 border-[#6320dd] animate-pulse"></div>
         </div>
+        
+        {/* Connection status indicator - Shows when retrying connection */}
+        {error && error.includes("Connection attempt") && (
+          <div className="mt-4 text-center text-sm text-[#b69fff] bg-[#1a0050]/50 p-2 rounded-lg border border-[#6320dd]/30 animate-pulse">
+            <div className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#8b5cf6]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Attempting to reach server... Please wait
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Add a keyframes animation for the sliding effect */}
+      
+      {/* Credit text */}
+      <div className="absolute bottom-4 text-center w-full text-xs text-[#b69fff]/50">
+        <p>Made with ❤️ by LogicLength • © {new Date().getFullYear()}</p>
+      </div>
+      
+      {/* CSS for animations */}
       <style jsx>{`
-        @keyframes slide-right {
-          0%, 100% { transform: translateX(-100%) rotate(-45deg); }
-          50% { transform: translateX(100%) rotate(-45deg); }
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 10px 0px rgba(99, 32, 221, 0.3); }
+          50% { box-shadow: 0 0 20px 5px rgba(99, 32, 221, 0.5); }
         }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-10px) rotate(2deg); }
+        }
+        
+        @keyframes shimmer {
+          0% { transform: translateX(-100%) skewX(-12deg); }
+          100% { transform: translateX(200%) skewX(-12deg); }
+        }
+        
+        @keyframes slide-right {
+          0% { transform: translateX(-100%) rotate(-45deg); }
+          100% { transform: translateX(200%) rotate(-45deg); }
+        }
+        
+        @keyframes particle-float {
+          0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+          25% { opacity: 1; }
+          50% { transform: translateY(-100px) translateX(100px); opacity: 0.5; }
+          75% { opacity: 0.2; }
+          100% { transform: translateY(-200px) translateX(200px); opacity: 0; }
+        }
+        
+        .animate-glow {
+          animation: glow 3s ease-in-out infinite;
+        }
+        
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+        
+        .animate-shimmer {
+          animation: shimmer 2s infinite;
+        }
+        
         .animate-slide-right {
-          animation: slide-right 3s infinite ease-in-out;
+          animation: slide-right 3s infinite;
+        }
+        
+        .super-neon {
+          text-shadow: 0 0 5px rgba(99, 32, 221, 0.5), 0 0 10px rgba(99, 32, 221, 0.3);
+        }
+        
+        .futuristic-border {
+          border: 1px solid rgba(99, 32, 221, 0.3);
+          box-shadow: 0 0 15px rgba(99, 32, 221, 0.3), inset 0 0 10px rgba(99, 32, 221, 0.1);
+        }
+        
+        .perspective-container {
+          perspective: 1000px;
+        }
+        
+        .perspective-element {
+          transform-style: preserve-3d;
+        }
+        
+        .particle-elem {
+          position: absolute;
+          background-color: rgba(99, 32, 221, 0.5);
+          border-radius: 50%;
+          animation: particle-float linear infinite;
+        }
+        
+        .particles-bg {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+        
+        .loading-dots::after {
+          content: '...';
+          display: inline-block;
+          animation: dotAnimation 1.5s infinite;
+          width: 24px;
+          text-align: left;
+        }
+        
+        @keyframes dotAnimation {
+          0% { content: '.'; }
+          33% { content: '..'; }
+          66% { content: '...'; }
+          100% { content: '.'; }
         }
       `}</style>
     </div>
