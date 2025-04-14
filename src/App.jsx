@@ -1,25 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Main_bar from "./components/main_bar";
-import Login from "./components/login"; // Ensure correct capitalization
-import Game1 from "./pages/game1"; // Import the Game1 component
-import Game3 from "./pages/game3";
-import Game4 from "./pages/game4"; // Import the Game4 component for snakes
-import Game5 from "./pages/game5"; // Import the Game5 component for mines-plinko
-import Game6 from "./pages/game6"; // Import the Game6 component for snail race
-import Game7 from "./pages/game7"; // Import the Game7 component for plinko
-import Game8 from "./pages/game8"; // Import the Game8 component for aviator
-import Payment from "./components/Payment";
-import MultiplayerGames from "./pages/MultiplayerGames"; // Import new page
-import SinglePlayerGames from "./pages/SinglePlayerGames"; // Import new page
-import GameHistory from "./pages/GameHistory"; // Import Game History page
-import TransactionHistory from "./pages/TransactionHistory"; // Import Transaction History page
-import ProfileSettings from "./pages/ProfileSettings"; // Import Profile Settings page
-import ErrorBoundary from "./components/ErrorBoundary"; // Import Error Boundary
+import Navbar from "./components/navbar.jsx";
+import Main_bar from "./components/main_bar.jsx";
+import Login from "./components/login.jsx"; // Ensure correct capitalization
+import Game1 from "./pages/game1.jsx"; // Import the Game1 component
+import Game3 from "./pages/game3.jsx";
+import Game4 from "./pages/game4.jsx"; // Import the Game4 component for snakes
+import Game5 from "./pages/game5.jsx"; // Import the Game5 component for mines-plinko
+import Game6 from "./pages/game6.jsx"; // Import the Game6 component for snail race
+import Game7 from "./pages/game7.jsx"; // Import the Game7 component for plinko
+import Game8 from "./pages/game8.jsx"; // Import the Game8 component for aviator
+import Payment from "./components/Payment.jsx";
+import MultiplayerGames from "./pages/MultiplayerGames.jsx"; // Import new page
+import SinglePlayerGames from "./pages/SinglePlayerGames.jsx"; // Import new page
+import GameHistory from "./pages/GameHistory.jsx"; // Import Game History page
+import TransactionHistory from "./pages/TransactionHistory.jsx"; // Import Transaction History page
+import ProfileSettings from "./pages/ProfileSettings.jsx"; // Import Profile Settings page
+import ErrorBoundary from "./components/ErrorBoundary.jsx"; // Import Error Boundary
 import axios from "axios";
-import { MultiplayerProvider } from "./components/multiplayer/MultiplayerContext";
-import MultiplayerTicTacToe from "./components/multiplayer/MultiplayerTicTacToe";
+import { MultiplayerProvider } from "./components/multiplayer/MultiplayerContext.jsx";
+import MultiplayerTicTacToe from "./components/multiplayer/MultiplayerTicTacToe.jsx";
 
 // Game coin requirements
 const GAME_COSTS = {
