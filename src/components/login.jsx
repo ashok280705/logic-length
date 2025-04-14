@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithGoogle } from "../config/firebaseConfig";
+import { signInWithGoogle, isDomainAllowed } from "../config/firebaseConfig";
 import axios from 'axios';
 
 const Login = ({ setUser }) => {
@@ -13,10 +13,15 @@ const Login = ({ setUser }) => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [isDomainAuthorized, setIsDomainAuthorized] = useState(true);
   const navigate = useNavigate();
 
-  // Page loading animation
+  // Check domain authorization on component mount
   useEffect(() => {
+    // Check if current domain is in the allowed list
+    setIsDomainAuthorized(isDomainAllowed());
+    
+    // Page loading animation
     const timer = setTimeout(() => {
       setPageLoading(false);
     }, 1500);
@@ -103,6 +108,13 @@ const Login = ({ setUser }) => {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError("");
+    
+    // Check if domain is authorized first
+    if (!isDomainAuthorized) {
+      setError("Google Sign-In is not available on this domain. Please use username/password login instead.");
+      setIsLoading(false);
+      return;
+    }
     
     try {
       console.log("Initiating Google Sign-In from login component...");
@@ -247,6 +259,15 @@ const Login = ({ setUser }) => {
             {isLogin ? "Login to access your account" : "Join our gaming community"}
           </p>
           
+          {/* Domain unauthorized warning */}
+          {!isDomainAuthorized && (
+            <div className="bg-red-900/40 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-6">
+              <p className="text-sm">
+                This domain is not authorized for Google Sign-In. Please use username/password login instead, or contact support.
+              </p>
+            </div>
+          )}
+          
           {/* Error message */}
           {error && (
             <div className="mb-6 p-3 bg-red-900/50 text-red-300 rounded-lg border border-red-500 animate-pulse relative overflow-hidden">
@@ -345,7 +366,7 @@ const Login = ({ setUser }) => {
               type="button" 
               onClick={handleGoogleSignIn}
               className="w-full py-3 bg-white text-[#4285F4] rounded-lg font-semibold transition-all duration-300 hover:bg-gray-100 hover:shadow-md hover:shadow-[#6320dd]/30 border border-gray-300 flex items-center justify-center relative overflow-hidden"
-              disabled={isLoading}
+              disabled={isLoading || !isDomainAuthorized}
             >
               <span className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center bg-white">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />

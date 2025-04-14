@@ -14,6 +14,9 @@ const firebaseConfig = {
   measurementId: "G-9DEWLF5SRF"
 };
 
+// Get current hostname for domain validation
+const currentHostname = window.location.hostname;
+
 // Initialize Firebase with a name to prevent duplicate apps
 let app;
 let auth;
@@ -26,6 +29,9 @@ try {
   auth = initializeAuth(app, {
     popupRedirectResolver: browserPopupRedirectResolver,
   });
+  
+  // Log the current hostname for debugging domain issues
+  console.log("Current hostname:", currentHostname);
 } catch (error) {
   console.error("Firebase initialization error", error);
   // If already initialized, use the existing app
@@ -86,8 +92,22 @@ export const signInWithGoogle = async () => {
         throw new Error("Network error. Please check your internet connection.");
       case 'auth/internal-error':
         throw new Error("An internal error occurred. Please try again later.");
+      case 'auth/unauthorized-domain':
+        console.error(`Domain ${currentHostname} is not authorized in Firebase.`);
+        throw new Error("This website is not authorized for Google Sign-In. Please contact support and mention 'unauthorized domain'.");
       default:
         throw new Error(error.message || "Failed to sign in with Google. Please try again.");
     }
   }
+};
+
+// Debug function to test if domain is allowed
+export const isDomainAllowed = () => {
+  const validDomains = [
+    'localhost', 
+    '127.0.0.1',
+    'logic-length-frontend.onrender.com'
+  ];
+  
+  return validDomains.some(domain => currentHostname.includes(domain));
 };
