@@ -18,9 +18,8 @@ const connectDB = async () => {
     bufferCommands: true, // Explicitly allow command buffering
     heartbeatFrequencyMS: 15000, // Check connection every 15 seconds
     autoIndex: false, // Don't build indexes automatically in production
-    // Add DNS caching options
+    // DNS options
     family: 4, // Use IPv4 only, this helps with some DNS issues
-    dnsQueryTimeout: 10000, // DNS query timeout after 10 seconds
     // Set lookup function for Render and other environments with DNS issues
     lookup: null // Let mongoose use default DNS resolution
   };
