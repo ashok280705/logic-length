@@ -57,29 +57,32 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  transactions: [{
-    amount: {
-      type: Number,
-      required: true
-    },
-    type: {
-      type: String,
-      required: true
-    }, // 'purchase', 'spend', or 'bonus'
-    orderId: {
-      type: String,
-      required: true
-    },
-    paymentId: {
-      type: String,
-      required: true
-    },
-    date: {
-      type: Date,
-      default: Date.now,
-      required: true
-    }
-  }]
+  transactions: {
+    type: [{
+      amount: {
+        type: Number,
+        required: true
+      },
+      type: {
+        type: String,
+        required: true
+      },
+      orderId: {
+        type: String,
+        required: true
+      },
+      paymentId: {
+        type: String,
+        required: true
+      },
+      date: {
+        type: Date,
+        default: Date.now,
+        required: true
+      }
+    }],
+    default: [] // Initialize as empty array by default
+  }
 }, {
   timestamps: true // Adds createdAt and updatedAt automatically
 });

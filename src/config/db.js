@@ -15,6 +15,7 @@ const connectDB = async () => {
     connectTimeoutMS: 30000, // Give up initial connection after 30 seconds
     maxPoolSize: 50, // Maintain up to 50 socket connections
     minPoolSize: 5,  // Keep at least 5 connections open
+    bufferCommands: true, // Explicitly allow command buffering
     heartbeatFrequencyMS: 15000, // Check connection every 15 seconds
     autoIndex: false, // Don't build indexes automatically in production
   };

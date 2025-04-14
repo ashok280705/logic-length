@@ -55,13 +55,46 @@ const io = new Server(server, {
 
 // Modified initialization with async IIFE
 (async function startServer() {
-  try {
-    // Connect to MongoDB first
-    console.log('Connecting to MongoDB...');
-    await connectDB();
-    console.log('MongoDB connection established');
-
-    // Now setup Express middleware after DB connection
+  let connectionAttempts = 0;
+  const maxConnectionAttempts = 5;
+  
+  async function attemptConnection() {
+    try {
+      connectionAttempts++;
+      // Connect to MongoDB first
+      console.log(`Connecting to MongoDB... (Attempt ${connectionAttempts}/${maxConnectionAttempts})`);
+      await connectDB();
+      console.log('MongoDB connection established successfully');
+      
+      // Check connection by performing a simple query
+      const mongoose = (await import('mongoose')).default;
+      if (!mongoose.connection.readyState) {
+        throw new Error('MongoDB connection not ready after connect');
+      }
+      
+      console.log('MongoDB connection verified and ready');
+      
+      // Now setup Express middleware after confirmed DB connection
+      setupExpress();
+      setupRoutes();
+      startListening();
+      setupSocketIO();
+      
+    } catch (error) {
+      console.error(`MongoDB connection attempt ${connectionAttempts} failed:`, error.message);
+      
+      if (connectionAttempts < maxConnectionAttempts) {
+        const retryDelay = connectionAttempts * 3000; // Increasing delay with each attempt
+        console.log(`Retrying in ${retryDelay/1000} seconds...`);
+        setTimeout(attemptConnection, retryDelay);
+      } else {
+        console.error('Max connection attempts reached. Server startup failed.');
+        process.exit(1);
+      }
+    }
+  }
+  
+  function setupExpress() {
     app.use(cors({
       origin: '*', // Allow all origins
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -78,30 +111,53 @@ const io = new Server(server, {
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
       }
     }));
-
+    
+    // Add error handling middleware
+    app.use((err, req, res, next) => {
+      console.error('Express error:', err);
+      res.status(500).json({
+        message: 'Server error',
+        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
+      });
+    });
+  }
+  
+  function setupRoutes() {
     // Test route
     app.get('/', (req, res) => {
       res.json({ message: 'Server is running!' });
+    });
+    
+    // Health check route
+    app.get('/health', (req, res) => {
+      const mongoose = require('mongoose');
+      res.json({ 
+        status: 'ok',
+        mongo: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+      });
     });
 
     // Routes - only add after DB connection is established
     app.use('/api/auth', authRoutes);
     app.use('/api/payment', paymentRoutes);
-
+    
+    // 404 handler
+    app.use((req, res) => {
+      res.status(404).json({ message: 'Route not found' });
+    });
+  }
+  
+  function startListening() {
     // Start the server
     const PORT = process.env.PORT || 5002;
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log('Socket.io listening for connections');
     });
-
-    // Socket.io setup
-    setupSocketIO();
-    
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
   }
+  
+  // Begin the connection process
+  attemptConnection();
 })();
 
 // Extract socket.io setup to a separate function
