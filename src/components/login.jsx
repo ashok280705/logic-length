@@ -60,9 +60,21 @@ const Login = ({ setUser }) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Form validation
-    if (!formData.username || !formData.password) {
-      setError("Username and password are required");
+    // Enhanced form validation
+    if (!formData.username || formData.username.length < 3) {
+      setError("Username must be at least 3 characters");
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!formData.email || !formData.email.includes('@')) {
+      setError("Please enter a valid email address");
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!formData.password || formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
       setIsLoading(false);
       return;
     }
@@ -75,9 +87,14 @@ const Login = ({ setUser }) => {
       
       console.log("Registration response:", response.data);
       setError("");
-      alert("Registration successful! Please login.");
+      
+      // Show success message and auto-fill login form
+      alert("Registration successful! You can now login with your credentials.");
       setIsLogin(true);
-      setFormData({ username: "", password: "", email: "" });
+      setFormData({ 
+        ...formData,
+        password: "" // Clear password but keep username for easy login
+      });
     } catch (error) {
       console.error("Registration error:", error);
       if (error.response) {

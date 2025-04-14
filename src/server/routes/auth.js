@@ -14,38 +14,76 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
     
-    console.log('Registration attempt:', { username, email });
+    console.log('Registration attempt:', { username, email: email ? email.substring(0, 3) + '***' : 'none' });
     
-    // Check if all required fields are provided
-    if (!username || !password) {
-      console.log('Registration failed: Missing required fields');
-      return res.status(400).json({ message: 'Username and password are required' });
+    // Enhanced validation
+    if (!username || username.length < 3) {
+      return res.status(400).json({ message: 'Username must be at least 3 characters long' });
+    }
+    
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+    
+    if (email && !/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+      return res.status(400).json({ message: 'Please provide a valid email address' });
     }
     
     try {
       // Check if user already exists
-      const existingUser = await User.findOne({ username });
-      if (existingUser) {
-        console.log('Registration failed: Username already exists');
-        return res.status(400).json({ message: 'Username already exists' });
+      const existingUsername = await User.findOne({ username });
+      if (existingUsername) {
+        return res.status(400).json({ message: 'Username is already taken' });
+      }
+      
+      if (email) {
+        const existingEmail = await User.findOne({ email });
+        if (existingEmail) {
+          return res.status(400).json({ message: 'Email is already registered' });
+        }
       }
   
-      // Create new user
+      // Create new user with default values
       const user = new User({
         username,
-        email,
-        password
+        email: email || '',
+        password,
+        coins: 50,       // Default starting coins
+        level: 1,        // Starting level
+        xp: 0,           // Starting XP
+        transactions: [{ // Initial bonus transaction
+          amount: 50,
+          type: 'bonus',
+          date: new Date(),
+          orderId: `welcome-${Date.now()}`,
+          paymentId: `welcome-${Date.now()}`
+        }]
       });
   
-      console.log('Attempting to save new user to database...');
+      console.log('Saving new user to database...');
       await user.save();
+      
+      // Return success with user info but WITHOUT password
+      const userData = {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        coins: user.coins,
+        level: user.level,
+        xp: user.xp
+      };
+      
       console.log('User registered successfully:', username);
-      return res.status(201).json({ message: 'User registered successfully' });
+      return res.status(201).json({ 
+        message: 'Registration successful! You can now log in.',
+        success: true,
+        user: userData
+      });
     } catch (dbError) {
       console.error('Database error during registration:', dbError);
       if (dbError.name === 'MongoServerError' && dbError.code === 11000) {
         // Duplicate key error
-        return res.status(400).json({ message: 'Username already exists' });
+        return res.status(400).json({ message: 'Username or email already exists' });
       } else if (dbError.name === 'ValidationError') {
         // Mongoose validation error
         const errors = Object.values(dbError.errors).map(err => err.message);
@@ -64,19 +102,38 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
+    console.log('Login attempt:', username);
+    
+    // Input validation
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
+
     // Find user
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ 
+      $or: [
+        { username: username },
+        { email: username } // Allow login with email too
+      ]
+    });
+    
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      console.log('Login failed: User not found');
+      return res.status(400).json({ message: 'Invalid username or password' });
     }
 
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Check password using the method defined in the User model
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      console.log('Login failed: Invalid password');
+      return res.status(400).json({ message: 'Invalid username or password' });
     }
 
-    // Send user data (excluding password) including coins and transactions
+    // Update last login timestamp
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Send user data (excluding password)
     const userData = {
       id: user._id,
       username: user.username,
@@ -84,15 +141,25 @@ router.post('/login', async (req, res) => {
       coins: user.coins || 0,
       transactions: user.transactions || [],
       level: user.level || 1,
-      xp: user.xp || 0
+      xp: user.xp || 0,
+      photoURL: user.photoURL || null
     };
 
     console.log('User logged in successfully:', username);
     console.log('User coins balance:', user.coins);
-    res.json(userData);
+    
+    return res.status(200).json({
+      message: 'Login successful',
+      success: true,
+      user: userData
+    });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ 
+      message: 'Server error during login', 
+      error: error.message,
+      success: false
+    });
   }
 });
 
