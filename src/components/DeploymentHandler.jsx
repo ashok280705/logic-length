@@ -10,8 +10,38 @@ const DeploymentHandler = ({ children }) => {
     const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5001';
     console.log('Connecting to server at:', serverUrl);
     
+    // Set axios defaults
     axios.defaults.baseURL = serverUrl;
+    
+    // For API calls that need the full URL
+    window.API_BASE_URL = serverUrl;
+    
+    // Fix CORS issues
     axios.defaults.withCredentials = true;
+    
+    // Add request interceptor to log all requests
+    axios.interceptors.request.use(
+      config => {
+        console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`, config.data);
+        return config;
+      },
+      error => {
+        console.error('API Request Error:', error);
+        return Promise.reject(error);
+      }
+    );
+    
+    // Add response interceptor to log all responses
+    axios.interceptors.response.use(
+      response => {
+        console.log(`API Response: ${response.status} from ${response.config.url}`, response.data);
+        return response;
+      },
+      error => {
+        console.error('API Response Error:', error.response || error);
+        return Promise.reject(error);
+      }
+    );
     
     // Health check to ensure API connection
     const checkConnection = async () => {
@@ -20,11 +50,14 @@ const DeploymentHandler = ({ children }) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Try to ping the server
-        await axios.get('/api/health-check', { timeout: 5000 })
-          .catch(error => {
-            console.warn('Health check failed, using fallback mode:', error);
-            // Continue anyway even if health check fails
-          });
+        console.log('Performing health check to server:', serverUrl);
+        try {
+          await axios.get('/api/health-check', { timeout: 5000 });
+          console.log('Health check successful');
+        } catch (healthError) {
+          console.warn('Health check failed, app will continue in offline mode:', healthError);
+          // Continue anyway even if health check fails
+        }
         
         setIsLoading(false);
       } catch (error) {

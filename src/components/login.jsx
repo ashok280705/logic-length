@@ -115,56 +115,102 @@ const Login = ({ setUser }) => {
       console.log("Google Sign-In successful, processing user data:", googleUser);
       
       try {
-        const response = await axios.post('/api/auth/google-signin', {
+        // Log the data we're sending to the server
+        const googleAuthData = {
           email: googleUser.email,
-          displayName: googleUser.displayName,
-          googleId: googleUser.uid,
+          displayName: googleUser.username || googleUser.displayName,
+          googleId: googleUser.id || googleUser.uid,
           photoURL: googleUser.photoURL
-        });
+        };
         
-        if (response.data && response.data.success) {
+        console.log("Sending Google auth data to server:", googleAuthData);
+        
+        const response = await axios.post('/api/auth/google-signin', googleAuthData)
+          .catch(error => {
+            console.error("API call error details:", error.response || error);
+            throw error;
+          });
+        
+        console.log("Server response for Google sign-in:", response?.data);
+        
+        if (response?.data?.success) {
           console.log("User found in database:", response.data.user);
           
           const existingUser = response.data.user;
           const mergedUser = {
             ...googleUser,
-            id: existingUser.id || googleUser.uid,
+            id: existingUser.id || googleUser.id || googleUser.uid,
+            username: existingUser.username || googleUser.username || googleUser.displayName,
             coins: existingUser.coins || 0,
             transactions: existingUser.transactions || [],
             level: existingUser.level || 1,
             xp: existingUser.xp || 0
           };
           
+          console.log("Final user data after merging:", mergedUser);
           localStorage.setItem("user", JSON.stringify(mergedUser));
           setUser(mergedUser);
           
-          navigate("/home");
+          // Small delay to ensure state is updated before navigation
+          setTimeout(() => {
+            console.log("Navigating to home page...");
+            navigate("/home");
+          }, 500);
         } else {
           // Create new user with default values
           const newUser = {
             ...googleUser,
+            username: googleUser.displayName || googleUser.email.split('@')[0],
             coins: 50,
             level: 1,
             xp: 0,
             transactions: []
           };
           
+          console.log("Creating new user in database:", newUser);
+          
           // Try to create the user in the database
-          await axios.post('/api/auth/create-google-user', newUser);
+          try {
+            const createResponse = await axios.post('/api/auth/create-google-user', newUser);
+            console.log("Create user response:", createResponse?.data);
+          } catch (createError) {
+            console.error("Failed to create user in database, but continuing with local login:", createError);
+          }
           
           localStorage.setItem("user", JSON.stringify(newUser));
           setUser(newUser);
           
-          navigate("/home");
+          // Small delay to ensure state is updated before navigation
+          setTimeout(() => {
+            console.log("Navigating to home page...");
+            navigate("/home");
+          }, 500);
         }
       } catch (apiError) {
         console.error("API error during Google sign-in:", apiError);
-        throw new Error("Failed to process sign-in. Please try again.");
+        
+        // Fallback mode - create a local user without saving to DB
+        console.log("Using fallback mode - creating local user without DB save");
+        const fallbackUser = {
+          ...googleUser,
+          coins: 50,
+          level: 1,
+          xp: 0,
+          transactions: []
+        };
+        
+        localStorage.setItem("user", JSON.stringify(fallbackUser));
+        setUser(fallbackUser);
+        
+        // Small delay to ensure state is updated before navigation
+        setTimeout(() => {
+          console.log("Navigating to home page in fallback mode...");
+          navigate("/home");
+        }, 500);
       }
     } catch (error) {
       console.error("Google Sign-In Error:", error);
       setError(error.message || "Failed to sign in with Google. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };

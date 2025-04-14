@@ -56,11 +56,14 @@ export const signInWithGoogle = async () => {
     const user = result.user;
     
     console.log("Google Sign-In successful for:", user.displayName);
+    console.log("Full Firebase user object:", user);
     
     // Create a custom user object with needed fields
     const customUser = {
       id: user.uid,
+      uid: user.uid, // Include both id and uid for compatibility
       username: user.displayName || user.email.split('@')[0],
+      displayName: user.displayName || user.email.split('@')[0], // Include both username and displayName
       email: user.email,
       photoURL: user.photoURL,
       coins: 50, // Default coins for new Google users
@@ -68,6 +71,7 @@ export const signInWithGoogle = async () => {
       xp: 0
     };
     
+    console.log("Transformed user object:", customUser);
     return customUser;
   } catch (error) {
     console.error("Google Sign-In Error:", error.code, error.message);
