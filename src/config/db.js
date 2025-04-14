@@ -18,6 +18,11 @@ const connectDB = async () => {
     bufferCommands: true, // Explicitly allow command buffering
     heartbeatFrequencyMS: 15000, // Check connection every 15 seconds
     autoIndex: false, // Don't build indexes automatically in production
+    // Add DNS caching options
+    family: 4, // Use IPv4 only, this helps with some DNS issues
+    dnsQueryTimeout: 10000, // DNS query timeout after 10 seconds
+    // Set lookup function for Render and other environments with DNS issues
+    lookup: null // Let mongoose use default DNS resolution
   };
 
   // First, try the direct connection string if available
@@ -54,6 +59,39 @@ const connectDB = async () => {
     
   } catch (error) {
     console.error(`MongoDB Connection Error: ${error.message}`);
+    
+    // Special handling for DNS errors
+    if (error.message.includes('querySrv ENOTFOUND') || 
+        error.message.includes('ENOTFOUND') ||
+        error.message.includes('DNS lookup failed')) {
+      
+      console.error('DNS resolution failed for SRV record. This is common on some hosting providers.');
+      console.error('Trying a direct connection to MongoDB without SRV...');
+      
+      // Check if we have a direct URI as fallback
+      if (process.env.MONGODB_DIRECT_URI) {
+        try {
+          console.log('Attempting connection with direct URI (no SRV)...');
+          // Use direct connection with modified options
+          const directConnOptions = {
+            ...connectionOptions,
+            useNewUrlParser: true
+          };
+          
+          const conn = await mongoose.connect(process.env.MONGODB_DIRECT_URI, directConnOptions);
+          console.log(`MongoDB Connected via direct URI after DNS failure: ${conn.connection.host}`);
+          setupEventListeners(process.env.MONGODB_DIRECT_URI);
+          return conn;
+        } catch (directError) {
+          console.error('Direct connection also failed:', directError.message);
+          throw directError; // Re-throw the error
+        }
+      } else {
+        console.error('No MONGODB_DIRECT_URI provided in environment variables for fallback.');
+        console.error('Please add a direct connection string to your .env file as MONGODB_DIRECT_URI');
+      }
+    }
+    
     console.error('Please check your MongoDB Atlas credentials in .env file');
     console.error('If using Render or cloud hosting, ensure IP whitelist includes 0.0.0.0/0');
     // Throw the error to be caught by the caller
