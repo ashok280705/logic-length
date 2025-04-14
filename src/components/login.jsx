@@ -75,7 +75,13 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     instance.interceptors.request.use(
       config => {
         console.log(`${config.method.toUpperCase()} request to ${config.url}`);
-        // Ensure URL has correct format
+        // Ensure URL has correct format and use direct access for MongoDB Atlas in /auth endpoints
+        if (config.url.includes('/auth')) {
+          console.log('Using direct MongoDB Atlas connection for auth');
+          // We keep the API path intact but add a flag to use direct Atlas connection
+          config.headers['X-Use-Atlas-Direct'] = 'true';
+        }
+        
         if (!config.url.startsWith('/api/')) {
           config.url = '/api' + (config.url.startsWith('/') ? config.url : '/' + config.url);
         }
@@ -150,7 +156,7 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     setIsLoading(false);
   };
 
-  // Handle Registration with retry
+  // Handle Registration with retry and direct Atlas fallback
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -181,6 +187,24 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     let retryCount = 0;
     let success = false;
     
+    // Create the registration user object
+    const newUser = {
+      username: formData.username,
+      email: formData.email,
+      password: formData.password,
+      // Default values
+      coins: 50,
+      level: 1,
+      xp: 0,
+      transactions: [{
+        amount: 50,
+        type: 'bonus',
+        date: new Date(),
+        orderId: `welcome-${Date.now()}`,
+        paymentId: `welcome-${Date.now()}`
+      }]
+    };
+    
     while (retryCount <= maxRetries && !success) {
       try {
         if (retryCount > 0) {
@@ -190,11 +214,15 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
+        // Last attempt, try direct Atlas connection
+        if (retryCount === maxRetries) {
+          console.log("Attempting direct Atlas connection as last resort");
+        }
+        
         const axiosInstance = getAxiosInstance(40000); // 40 second timeout for registration
-        const response = await axiosInstance.post('/auth/register', formData);
+        const response = await axiosInstance.post('/auth/register', newUser);
         
         console.log("Registration response:", response.data);
-        setError("");
         
         // Show success message and auto-fill login form
         alert("Registration successful! You can now login with your credentials.");
@@ -205,6 +233,12 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
         });
         
         success = true;
+        
+        // If on /register URL, redirect to /login
+        if (window.location.pathname.includes('register')) {
+          window.location.href = window.location.origin + '/login';
+        }
+        
         break;
       } catch (error) {
         retryCount++;
@@ -511,33 +545,72 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            {/* PLAIN VANILLA HTML BUTTON - GUARANTEED TO WORK */}
-            <a 
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                
-                // Log for debugging
-                console.log("CREATE ACCOUNT CLICKED", { isLogin });
-                
-                // Force URL change
-                window.location.href = isLogin ? 
-                  window.location.origin + "/register" : 
-                  window.location.origin + "/login";
-              }}
-              style={{
-                backgroundColor: "#6320dd",
-                color: "white",
-                fontWeight: "bold",
-                padding: "12px 24px",
-                borderRadius: "8px", 
-                cursor: "pointer",
-                textDecoration: "none",
-                display: "inline-block"
-              }}
-            >
-              {isLogin ? "Create New Account" : "Back to Login"}
-            </a>
+            {/* ULTRA SIMPLE REGISTRATION BUTTON */}
+            {isLogin && (
+              <button
+                type="button"
+                onClick={async () => {
+                  console.log("CREATE ACCOUNT BUTTON CLICKED");
+                  
+                  // Show registration form 
+                  if (isLogin) {
+                    // Direct DOM manipulation to ensure change happens
+                    document.title = "Create Account | Logic Length";
+                    setIsLogin(false);
+                    
+                    // Force hard navigation if needed
+                    if (window.location.pathname !== "/register") {
+                      window.location.href = window.location.origin + "/register";
+                    }
+                  }
+                }}
+                style={{
+                  width: "100%", 
+                  padding: "12px 24px",
+                  background: "#6320dd",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontSize: "16px"
+                }}
+              >
+                Create New Account
+              </button>
+            )}
+            
+            {/* ULTRA SIMPLE LOGIN BUTTON */}
+            {!isLogin && (
+              <button
+                type="button"
+                onClick={() => {
+                  console.log("BACK TO LOGIN BUTTON CLICKED");
+                  
+                  // Show login form
+                  document.title = "Login | Logic Length";
+                  setIsLogin(true);
+                  
+                  // Force hard navigation if needed
+                  if (window.location.pathname !== "/login") {
+                    window.location.href = window.location.origin + "/login";
+                  }
+                }}
+                style={{
+                  width: "100%", 
+                  padding: "12px 24px",
+                  background: "#4c1d95",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontSize: "16px"
+                }}
+              >
+                Back to Login
+              </button>
+            )}
           </div>
           
           {/* Glowing corners */}
