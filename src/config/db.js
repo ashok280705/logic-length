@@ -8,20 +8,15 @@ dotenv.config();
 const defaultMongoURI = 'mongodb+srv://anujmayekar001:cGFcVsaYqhSlkYpR@cluster0.q8tufbn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
 const connectDB = async () => {
-  // Common mongoose options for cloud deployment
+  // Common mongoose options - simplified to avoid unsupported options
   const connectionOptions = {
     serverSelectionTimeoutMS: 30000, // Timeout after 30 seconds instead of 10
     socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
     connectTimeoutMS: 30000, // Give up initial connection after 30 seconds
     maxPoolSize: 50, // Maintain up to 50 socket connections
     minPoolSize: 5,  // Keep at least 5 connections open
-    bufferCommands: true, // Explicitly allow command buffering
-    heartbeatFrequencyMS: 15000, // Check connection every 15 seconds
-    autoIndex: false, // Don't build indexes automatically in production
-    // DNS options
-    family: 4, // Use IPv4 only, this helps with some DNS issues
-    // Set lookup function for Render and other environments with DNS issues
-    lookup: null // Let mongoose use default DNS resolution
+    // Remove any options that could cause compatibility issues
+    autoIndex: false // Don't build indexes automatically in production
   };
 
   // First, try the direct connection string if available
@@ -46,7 +41,7 @@ const connectDB = async () => {
     
     console.log('Connecting to MongoDB via SRV...');
     
-    // Connect using SRV format
+    // Connect using SRV format with minimal options to avoid compatibility issues
     const conn = await mongoose.connect(mongoURI, connectionOptions);
     
     console.log(`MongoDB Connected via SRV: ${conn.connection.host}`);
@@ -71,13 +66,13 @@ const connectDB = async () => {
       if (process.env.MONGODB_DIRECT_URI) {
         try {
           console.log('Attempting connection with direct URI (no SRV)...');
-          // Use direct connection with modified options
-          const directConnOptions = {
-            ...connectionOptions,
-            useNewUrlParser: true
+          // Use direct connection with minimal options
+          const basicOptions = {
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000
           };
           
-          const conn = await mongoose.connect(process.env.MONGODB_DIRECT_URI, directConnOptions);
+          const conn = await mongoose.connect(process.env.MONGODB_DIRECT_URI, basicOptions);
           console.log(`MongoDB Connected via direct URI after DNS failure: ${conn.connection.host}`);
           setupEventListeners(process.env.MONGODB_DIRECT_URI);
           return conn;
