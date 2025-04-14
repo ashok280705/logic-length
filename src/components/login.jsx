@@ -106,112 +106,65 @@ const Login = ({ setUser }) => {
     
     try {
       console.log("Initiating Google Sign-In from login component...");
+      const googleUser = await signInWithGoogle();
       
-      // Using a timeout to ensure any pending UI updates are complete
-      setTimeout(async () => {
-        try {
-          const googleUser = await signInWithGoogle();
+      if (!googleUser) {
+        throw new Error("Google Sign-In failed. Please try again.");
+      }
+
+      console.log("Google Sign-In successful, processing user data:", googleUser);
+      
+      try {
+        const response = await axios.post('/api/auth/google-signin', {
+          email: googleUser.email,
+          displayName: googleUser.displayName,
+          googleId: googleUser.uid,
+          photoURL: googleUser.photoURL
+        });
+        
+        if (response.data && response.data.success) {
+          console.log("User found in database:", response.data.user);
           
-          if (googleUser) {
-            console.log("Google Sign-In successful, processing user data:", googleUser);
-            
-            try {
-              // Try to find if this Google user already exists in our system
-              // We'll do this by checking if there's a user with the same email
-              const response = await axios.post('/api/auth/google-signin', {
-                email: googleUser.email,
-                displayName: googleUser.username,
-                googleId: googleUser.id,
-                photoURL: googleUser.photoURL
-              });
-              
-              // If the user exists in our database, use that data with coins
-              if (response.data && response.data.success) {
-                console.log("User found in database:", response.data.user);
-                
-                // Create a user object combining Google data with database data
-                const existingUser = response.data.user;
-                const mergedUser = {
-                  ...googleUser,
-                  id: existingUser.id || googleUser.id,
-                  coins: existingUser.coins || 0,
-                  transactions: existingUser.transactions || [],
-                  level: existingUser.level || 1,
-                  xp: existingUser.xp || 0
-                };
-                
-                // Save merged user data to localStorage
-                localStorage.setItem("user", JSON.stringify(mergedUser));
-                setUser(mergedUser);
-                
-                console.log("Existing user data merged and saved, redirecting to home...");
-              } else {
-                // User doesn't exist, create a new user with default values
-                console.log("New Google user, creating default profile");
-                const newUser = {
-                  ...googleUser,
-                  coins: 50, // Default coins for new users
-                  level: 1,
-                  xp: 0,
-                  transactions: []
-                };
-                
-                localStorage.setItem("user", JSON.stringify(newUser));
-                setUser(newUser);
-                
-                console.log("New user data saved, redirecting to home...");
-              }
-              
-              // Small delay to ensure state updates before navigation
-              setTimeout(() => {
-                navigate("/home");
-              }, 500);
-            } catch (apiError) {
-              console.error("API error during Google sign-in:", apiError);
-              
-              // If there's an API error, still create a local user but log the error
-              const fallbackUser = {
-                ...googleUser,
-                coins: 50, // Default coins
-                level: 1,
-                xp: 0
-              };
-              
-              localStorage.setItem("user", JSON.stringify(fallbackUser));
-              setUser(fallbackUser);
-              
-              console.warn("Using fallback user data due to API error");
-              setTimeout(() => {
-                navigate("/home");
-              }, 500);
-            }
-          } else {
-            console.error("Google Sign-In returned null user");
-            setError("Google Sign-In failed. Please try again later.");
-            setIsLoading(false);
-          }
-        } catch (innerError) {
-          console.error("Inner Google Sign-In Error:", innerError);
-          setError(innerError.message || "Google Sign-In failed. Please try again.");
-          setIsLoading(false);
+          const existingUser = response.data.user;
+          const mergedUser = {
+            ...googleUser,
+            id: existingUser.id || googleUser.uid,
+            coins: existingUser.coins || 0,
+            transactions: existingUser.transactions || [],
+            level: existingUser.level || 1,
+            xp: existingUser.xp || 0
+          };
+          
+          localStorage.setItem("user", JSON.stringify(mergedUser));
+          setUser(mergedUser);
+          
+          navigate("/home");
+        } else {
+          // Create new user with default values
+          const newUser = {
+            ...googleUser,
+            coins: 50,
+            level: 1,
+            xp: 0,
+            transactions: []
+          };
+          
+          // Try to create the user in the database
+          await axios.post('/api/auth/create-google-user', newUser);
+          
+          localStorage.setItem("user", JSON.stringify(newUser));
+          setUser(newUser);
+          
+          navigate("/home");
         }
-      }, 100);
-      
+      } catch (apiError) {
+        console.error("API error during Google sign-in:", apiError);
+        throw new Error("Failed to process sign-in. Please try again.");
+      }
     } catch (error) {
       console.error("Google Sign-In Error:", error);
-      
-      // Provide user-friendly error messages
-      if (error.code === 'auth/popup-blocked') {
-        setError("Sign-in popup was blocked. Please allow popups for this site.");
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        setError("Sign-in was cancelled. Please try again.");
-      } else if (error.code === 'auth/network-request-failed') {
-        setError("Network error. Please check your internet connection.");
-      } else if (error.code === 'auth/web-storage-unsupported') {
-        setError("Local storage is disabled in your browser. Please enable it to continue.");
-      } else {
-        setError("Google Sign-In failed: " + (error.message || "Unknown error"));
-      }
+      setError(error.message || "Failed to sign in with Google. Please try again.");
+    } finally {
       setIsLoading(false);
     }
   };
