@@ -506,40 +506,44 @@ const Login = ({ setUser }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            {/* FIXED: Completely new approach using Links with different onClicks for reliability */}
-            {isLogin ? (
-              <div 
-                onClick={() => {
-                  console.log("SWITCHING TO REGISTER FORM");
-                  setIsLogin(false);
-                  setError("");
-                  setFormData({
-                    username: "",
-                    password: "",
-                    email: ""
-                  });
-                }}
-                className="inline-block cursor-pointer select-none px-6 py-3 bg-[#6320dd] hover:bg-[#4e1ebb] text-white rounded-lg font-medium transition-colors shadow-lg focus:outline-none"
-              >
-                Create New Account
-              </div>
-            ) : (
-              <div
-                onClick={() => {
-                  console.log("SWITCHING TO LOGIN FORM");
-                  setIsLogin(true);
-                  setError("");
-                  setFormData({
-                    username: "",
-                    password: "",
-                    email: ""
-                  });
-                }}
-                className="inline-block cursor-pointer select-none px-6 py-3 bg-[#6320dd] hover:bg-[#4e1ebb] text-white rounded-lg font-medium transition-colors shadow-lg focus:outline-none"
-              >
-                Back to Login
-              </div>
-            )}
+            {/* ULTRA SIMPLE APPROACH - plain HTML button with inline onClick */}
+            <button 
+              type="button"
+              style={{cursor: 'pointer', pointerEvents: 'auto'}}
+              onClick={function() {
+                if(isLogin) {
+                  window.localStorage.setItem('lastAction', 'switchToRegister');
+                  window.location.href = '#register';
+                  document.getElementById('toggleFormState').click();
+                } else {
+                  window.localStorage.setItem('lastAction', 'switchToLogin');
+                  window.location.href = '#login';
+                  document.getElementById('toggleFormState').click();
+                }
+              }}
+              className="inline-block px-6 py-3 bg-[#6320dd] hover:bg-[#4e1ebb] text-white rounded-lg font-medium transition-colors shadow-lg cursor-pointer"
+            >
+              {isLogin ? "Create New Account →" : "← Back to Login"}
+            </button>
+            
+            {/* Hidden button for state management */}
+            <button 
+              id="toggleFormState"
+              type="button"
+              style={{display: 'none'}}
+              onClick={() => {
+                console.log("FORM STATE CHANGE TRIGGERED");
+                setIsLogin(!isLogin);
+                setError("");
+                setFormData({
+                  username: "",
+                  password: "",
+                  email: ""
+                });
+              }}
+            >
+              Toggle Form
+            </button>
           </div>
           
           {/* Glowing corners */}
