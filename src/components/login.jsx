@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithGoogle } from "../config/firebaseConfig";
 import axios from 'axios';
+import { useConnection } from "./DeploymentHandler";
 
 const Login = ({ setUser, isLogin: initialIsLogin }) => {
   const [isLogin, setIsLogin] = useState(initialIsLogin !== false);
@@ -14,6 +15,7 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const navigate = useNavigate();
+  const connection = useConnection();
 
   // Update isLogin when the prop changes
   useEffect(() => {
@@ -47,13 +49,9 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     setError("");
   };
 
-  // Get the appropriate server URL based on environment
+  // Use the server URL from connection context instead of recalculating
   const getServerUrl = () => {
-    const isLocalDevelopment = window.location.hostname === 'localhost';
-    const prodUrl = 'https://logic-length.onrender.com';
-    
-    console.log(`Using ${isLocalDevelopment ? 'local development' : 'production'} server URL`);
-    return isLocalDevelopment ? 'http://localhost:5002' : prodUrl;
+    return connection.serverUrl || window.API_BASE_URL;
   };
 
   // Configure a pre-configured axios instance with longer timeout for Render
@@ -105,7 +103,8 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     
     console.log(`Login attempt for user: ${formData.username}`);
     
-    const maxRetries = 2;
+    // Use connection context max retries instead of hardcoded value
+    const maxRetries = connection.maxRetries;
     let retryCount = 0;
     let success = false;
     
@@ -139,6 +138,12 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
       } catch (error) {
         retryCount++;
         console.error(`Login attempt ${retryCount} failed:`, error);
+        
+        // If connection context shows we're already having connection issues,
+        // provide more helpful feedback
+        if (!connection.isConnected && retryCount === 1) {
+          setError("Server connection issues detected. We'll keep trying...");
+        }
         
         // Only set error message on last retry or non-network errors
         if (retryCount > maxRetries || (error.response && error.response.status !== 0)) {
@@ -183,7 +188,8 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     
     console.log(`Registration attempt for user: ${formData.username}`);
     
-    const maxRetries = 2;
+    // Use connection context max retries
+    const maxRetries = connection.maxRetries;
     let retryCount = 0;
     let success = false;
     
@@ -243,6 +249,12 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
       } catch (error) {
         retryCount++;
         console.error(`Registration attempt ${retryCount} failed:`, error);
+        
+        // If connection context shows we're already having connection issues,
+        // provide more helpful feedback
+        if (!connection.isConnected && retryCount === 1) {
+          setError("Server connection issues detected. We'll keep trying...");
+        }
         
         // Only set error message on last retry or non-network errors
         if (retryCount > maxRetries || (error.response && error.response.status !== 0)) {
@@ -356,6 +368,9 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     );
   }
 
+  // Show connection status indicator when there are connection issues
+  const showConnectionStatus = !connection.isConnected || error.includes("Connection attempt");
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a001a] to-[#1a0050] relative overflow-hidden">
       {/* Animated background elements */}
@@ -390,6 +405,27 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
       
       {/* Main content */}
       <div className="relative z-10 w-full max-w-md mx-4">
+        {/* Connection status banner - only shows when there are connection issues */}
+        {showConnectionStatus && !connection.isConnected && (
+          <div className="mb-4 p-3 bg-amber-900/60 text-amber-200 rounded-lg border border-amber-500/50 flex items-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-amber-900/30 transform -skew-x-12 animate-pulse"></div>
+            <svg className="animate-spin h-5 w-5 mr-3 text-amber-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div className="relative z-10">
+              <span className="font-medium">Connection issues detected!</span>
+              <p className="text-sm">The app will continue to work, but some features may be limited.</p>
+            </div>
+            <button 
+              onClick={() => connection.retryConnection()} 
+              className="ml-auto bg-amber-800 hover:bg-amber-700 text-amber-100 text-sm py-1 px-2 rounded"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        
         <div className="bg-gradient-to-b from-[#1a0050] to-[#09001a] rounded-xl shadow-2xl transform transition-all duration-300 scale-100 opacity-100 animate-glow futuristic-border p-8 relative overflow-hidden">
           {/* Diagonal glowing line */}
           <div 
@@ -651,6 +687,21 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
               </svg>
               Attempting to reach server... Please wait
             </div>
+          </div>
+        )}
+        
+        {/* Add retry button when there are connection issues */}
+        {!connection.isConnected && !error.includes("Connection attempt") && (
+          <div className="mt-4 text-center">
+            <button 
+              onClick={() => {
+                connection.retryConnection();
+                setError("Checking connection... Please wait.");
+              }}
+              className="bg-[#4e1ebb] hover:bg-[#6320dd] text-white py-2 px-4 rounded-lg text-sm transition-colors"
+            >
+              Check Connection
+            </button>
           </div>
         )}
       </div>

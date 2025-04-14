@@ -137,6 +137,36 @@ const io = new Server(server, {
       });
     });
 
+    // Add dedicated API health check that can be used by the frontend
+    app.get('/api/health', (req, res) => {
+      const healthData = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development',
+        version: process.env.npm_package_version || '1.0.0'
+      };
+      
+      try {
+        // Check MongoDB connection if available
+        const mongoose = require('mongoose');
+        healthData.database = {
+          connected: mongoose.connection.readyState === 1,
+          status: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState]
+        };
+      } catch (err) {
+        healthData.database = { connected: false, status: 'error', error: err.message };
+      }
+      
+      // Add CORS headers explicitly for this endpoint
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+      res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+      
+      // Return health data
+      res.json(healthData);
+    });
+
     // Add a specific auth test endpoint for health checks
     app.get('/api/auth/test', (req, res) => {
       res.json({ message: 'Auth endpoint is accessible' });
