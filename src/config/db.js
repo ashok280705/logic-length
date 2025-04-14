@@ -14,10 +14,16 @@ const connectDB = async () => {
     
     console.log('Connecting to MongoDB...');
     
-    // Enhanced mongoose options
+    // Enhanced mongoose options for cloud deployment
     const conn = await mongoose.connect(mongoURI, {
-      // No need to specify useNewUrlParser, useUnifiedTopology etc. in newer versions
-      // These are now default in Mongoose 6+
+      serverSelectionTimeoutMS: 30000, // Timeout after 30 seconds instead of 10
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      connectTimeoutMS: 30000, // Give up initial connection after 30 seconds
+      maxPoolSize: 50, // Maintain up to 50 socket connections
+      minPoolSize: 5,  // Keep at least 5 connections open
+      bufferCommands: false, // Disable command buffering
+      heartbeatFrequencyMS: 15000, // Check connection every 15 seconds
+      autoIndex: false, // Don't build indexes automatically in production
     });
     
     console.log(`MongoDB Connected: ${conn.connection.host}`);
@@ -25,10 +31,17 @@ const connectDB = async () => {
     // Add event listeners for connection issues
     mongoose.connection.on('error', err => {
       console.error('MongoDB connection error:', err);
+      setTimeout(() => {
+        console.log('Attempting to reconnect to MongoDB...');
+        mongoose.connect(mongoURI);
+      }, 5000); // Try to reconnect after 5 seconds
     });
     
     mongoose.connection.on('disconnected', () => {
       console.warn('MongoDB disconnected. Attempting to reconnect...');
+      setTimeout(() => {
+        mongoose.connect(mongoURI);
+      }, 3000); // Try to reconnect after 3 seconds
     });
     
     process.on('SIGINT', async () => {
@@ -40,7 +53,10 @@ const connectDB = async () => {
   } catch (error) {
     console.error(`MongoDB Connection Error: ${error.message}`);
     console.error('Please check your MongoDB Atlas credentials in .env file');
-    process.exit(1);
+    console.error('If using Render or cloud hosting, ensure IP whitelist includes 0.0.0.0/0');
+    // Don't exit process on error - let it retry
+    console.log('Will retry MongoDB connection in 5 seconds...');
+    setTimeout(() => connectDB(), 5000);
   }
 };
 
