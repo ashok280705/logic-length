@@ -10,7 +10,9 @@
     "dotenv": "^16.4.7",
     "express-session": "^1.18.1",
     "mongodb": "^6.15.0",
-    "mongoose": "^8.13.2"
+    "mongoose": "^8.13.2",
+    "bcryptjs": "^2.4.3",
+    "razorpay": "^2.9.6"
   },
   "scripts": {
     "start": "node src/server/index.js"
