@@ -137,12 +137,24 @@ const io = new Server(server, {
       });
     });
 
+    // Add a specific auth test endpoint for health checks
+    app.get('/api/auth/test', (req, res) => {
+      res.json({ message: 'Auth endpoint is accessible' });
+    });
+
     // Routes - only add after DB connection is established
     app.use('/api/auth', authRoutes);
     app.use('/api/payment', paymentRoutes);
     
+    // Log all incoming requests for debugging
+    app.use((req, res, next) => {
+      console.log(`${req.method} ${req.url}`);
+      next();
+    });
+    
     // 404 handler
     app.use((req, res) => {
+      console.log(`404 Not Found: ${req.method} ${req.url}`);
       res.status(404).json({ message: 'Route not found' });
     });
   }

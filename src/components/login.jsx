@@ -43,18 +43,28 @@ const Login = ({ setUser }) => {
 
   // Configure a pre-configured axios instance with longer timeout for Render
   const getAxiosInstance = (timeoutMs = 30000) => {
+    const serverUrl = getServerUrl();
+    console.log('Creating axios instance with server URL:', serverUrl);
+    
     const instance = axios.create({
-      baseURL: getServerUrl(),
+      baseURL: serverUrl,
       timeout: timeoutMs,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
       }
     });
     
     // Log all requests
     instance.interceptors.request.use(
       config => {
-        console.log(`${config.method.toUpperCase()} request to ${config.url}`, config.data);
+        console.log(`${config.method.toUpperCase()} request to ${config.url}`);
+        // Ensure URL has correct format
+        if (!config.url.startsWith('/api/')) {
+          config.url = '/api' + (config.url.startsWith('/') ? config.url : '/' + config.url);
+        }
+        console.log('Final request URL:', serverUrl + config.url);
         return config;
       },
       error => {
@@ -88,7 +98,7 @@ const Login = ({ setUser }) => {
         }
         
         const axiosInstance = getAxiosInstance(30000); // 30 second timeout
-        const response = await axiosInstance.post('/api/auth/login', {
+        const response = await axiosInstance.post('/auth/login', {
           username: formData.username,
           password: formData.password
         });
@@ -166,7 +176,7 @@ const Login = ({ setUser }) => {
         }
         
         const axiosInstance = getAxiosInstance(40000); // 40 second timeout for registration
-        const response = await axiosInstance.post('/api/auth/register', formData);
+        const response = await axiosInstance.post('/auth/register', formData);
         
         console.log("Registration response:", response.data);
         setError("");
