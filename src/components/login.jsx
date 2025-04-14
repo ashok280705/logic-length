@@ -43,12 +43,33 @@ const Login = ({ setUser }) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Use dynamic server URL
+      console.log("Starting login process for:", formData.username);
+      
+      // Use absolute URL to avoid any path issues
       const serverUrl = getServerUrl();
-      const response = await axios.post(`${serverUrl}/api/auth/login`, {
-        username: formData.username,
-        password: formData.password
+      const loginUrl = `${serverUrl}/api/auth/login`;
+      
+      console.log("Making login request to:", loginUrl);
+      
+      // Use axios with explicit configuration
+      const response = await axios({
+        method: 'post',
+        url: loginUrl,
+        data: {
+          username: formData.username,
+          password: formData.password
+        },
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000 // 15 seconds
       });
+      
+      console.log("Login successful, response:", response.data);
+      
+      if (!response.data || !response.data.user) {
+        throw new Error("Invalid response format from server");
+      }
       
       localStorage.setItem("user", JSON.stringify(response.data));
       setUser(response.data);
@@ -92,13 +113,26 @@ const Login = ({ setUser }) => {
     }
     
     try {
-      console.log("Submitting registration data:", formData);
+      console.log("Starting registration process for:", formData.username);
       
-      // Use dynamic server URL
+      // Use absolute URL to avoid any path issues
       const serverUrl = getServerUrl();
-      const response = await axios.post(`${serverUrl}/api/auth/register`, formData);
+      const registerUrl = `${serverUrl}/api/auth/register`;
       
-      console.log("Registration response:", response.data);
+      console.log("Making registration request to:", registerUrl);
+      
+      // Use axios with explicit configuration
+      const response = await axios({
+        method: 'post',
+        url: registerUrl,
+        data: formData,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 20000 // 20 seconds for registration which might take longer
+      });
+      
+      console.log("Registration successful, response:", response.data);
       setError("");
       
       // Show success message and auto-fill login form
