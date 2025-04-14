@@ -58,8 +58,10 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['https://your-frontend-domain.com', 'http://localhost:5173', '*'], // Add your frontend domain here
-  credentials: true
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  credentials: false
 }));
 app.use(express.json());
 app.use(session({

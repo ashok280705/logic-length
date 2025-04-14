@@ -1,0 +1,1 @@
+MONGODB_URI=mongodb+srv://anujlaptop28:ZeeCvS4N8tsvm86B@cluster0.cgubuwn.mongodb.net/logiclength?retryWrites=true&w=majority&appName=Cluster0

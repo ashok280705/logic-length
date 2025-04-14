@@ -51,13 +51,15 @@ router.post('/register', async (req, res) => {
         coins: 50,       // Default starting coins
         level: 1,        // Starting level
         xp: 0,           // Starting XP
-        transactions: [{ // Initial bonus transaction
-          amount: 50,
-          type: 'bonus',
-          date: new Date(),
-          orderId: `welcome-${Date.now()}`,
-          paymentId: `welcome-${Date.now()}`
-        }]
+        transactions: [  // Initial bonus transaction
+          {
+            amount: 50,
+            type: 'bonus',
+            date: new Date(),
+            orderId: `welcome-${Date.now()}`,
+            paymentId: `welcome-${Date.now()}`
+          }
+        ]
       });
   
       console.log('Saving new user to database...');

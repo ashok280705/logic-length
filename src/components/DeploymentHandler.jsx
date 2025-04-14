@@ -7,7 +7,7 @@ const DeploymentHandler = ({ children }) => {
 
   useEffect(() => {
     // Configure axios for deployment
-    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5001';
+    const serverUrl = 'http://localhost:5002';
     console.log('Connecting to server at:', serverUrl);
     
     // Set axios defaults
@@ -17,7 +17,7 @@ const DeploymentHandler = ({ children }) => {
     window.API_BASE_URL = serverUrl;
     
     // Fix CORS issues
-    axios.defaults.withCredentials = true;
+    axios.defaults.withCredentials = false;
     
     // Add request interceptor to log all requests
     axios.interceptors.request.use(

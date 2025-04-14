@@ -58,13 +58,26 @@ const userSchema = new mongoose.Schema({
     default: Date.now
   },
   transactions: [{
-    amount: Number,
-    type: String, // 'purchase' or 'spend'
-    orderId: String,
-    paymentId: String,
+    amount: {
+      type: Number,
+      required: true
+    },
+    type: {
+      type: String,
+      required: true
+    }, // 'purchase', 'spend', or 'bonus'
+    orderId: {
+      type: String,
+      required: true
+    },
+    paymentId: {
+      type: String,
+      required: true
+    },
     date: {
       type: Date,
-      default: Date.now
+      default: Date.now,
+      required: true
     }
   }]
 }, {

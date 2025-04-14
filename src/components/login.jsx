@@ -37,19 +37,24 @@ const Login = ({ setUser }) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Use relative URL which will work with the Vite proxy
-      const response = await axios.post('/api/auth/login', {
+      // Simplify axios configuration
+      const response = await axios.post('http://localhost:5002/api/auth/login', {
         username: formData.username,
         password: formData.password
       });
       
-      const userData = response.data;
-      localStorage.setItem("user", JSON.stringify(userData));
-      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(response.data));
+      setUser(response.data);
       navigate("/home");
     } catch (error) {
       console.error("Login error:", error);
-      setError(error.response?.data?.message || "Login failed! Please check your credentials.");
+      if (error.response) {
+        setError(error.response.data.message || "Login failed! Please check your credentials.");
+      } else if (error.request) {
+        setError("Server is not responding. Please check if it's running at http://localhost:5002");
+      } else {
+        setError("Login failed! " + error.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -82,8 +87,8 @@ const Login = ({ setUser }) => {
     try {
       console.log("Submitting registration data:", formData);
       
-      // Use relative URL which will work with the Vite proxy
-      const response = await axios.post('/api/auth/register', formData);
+      // Simplify axios configuration
+      const response = await axios.post('http://localhost:5002/api/auth/register', formData);
       
       console.log("Registration response:", response.data);
       setError("");
@@ -105,7 +110,7 @@ const Login = ({ setUser }) => {
       } else if (error.request) {
         // The request was made but no response was received
         console.error("Error request:", error.request);
-        setError("No response from server. Please check your network connection.");
+        setError("Server is not responding. Please check if it's running at http://localhost:5002");
       } else {
         // Something happened in setting up the request
         console.error("Error message:", error.message);
@@ -316,7 +321,7 @@ const Login = ({ setUser }) => {
               <div className="relative">
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#b69fff]">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
                 <input
@@ -352,7 +357,7 @@ const Login = ({ setUser }) => {
             
             <button 
               type="submit" 
-              className={`w-full py-3 ${isLogin ? 'bg-gradient-to-r from-[#4e1ebb] to-[#8b5cf6]' : 'bg-gradient-to-r from-[#8b5cf6] to-[#6320dd]'} text-white rounded-lg font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#6320dd]/50 relative overflow-hidden shine-effect border border-transparent hover:border-[#b69fff]/30 transform flex items-center justify-center holo-card`}
+              className="w-full py-3 bg-gradient-to-r from-[#4e1ebb] to-[#8b5cf6] text-white rounded-lg font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#6320dd]/50 relative overflow-hidden border border-transparent hover:border-[#b69fff]/30 transform flex items-center justify-center"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -387,16 +392,17 @@ const Login = ({ setUser }) => {
           </form>
           
           {/* Toggle between login and signup */}
-          <div className="text-center mt-6">
-            <p className="text-[#b69fff]">
+          <div className="text-center mt-6 relative z-20">
+            <p className="text-[#b69fff] mb-3">
               {isLogin ? "Don't have an account?" : "Already have an account?"}
-              <button 
-                onClick={() => setIsLogin(!isLogin)} 
-                className="ml-2 text-white font-medium hover:text-[#8b5cf6] transition-colors duration-300 focus:outline-none"
-              >
-                {isLogin ? 'Sign Up' : 'Sign In'}
-              </button>
             </p>
+            <button 
+              onClick={() => setIsLogin(!isLogin)} 
+              type="button"
+              className="px-6 py-2 bg-[#6320dd] text-white rounded-lg font-medium hover:bg-[#8b5cf6] focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-colors z-20 relative"
+            >
+              {isLogin ? 'Sign Up' : 'Sign In'}
+            </button>
           </div>
           
           {/* Cyberpunk style corners */}
