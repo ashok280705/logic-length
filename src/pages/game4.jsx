@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { gsap, Power1 } from 'gsap';
-import Navbar from '../components/Navbar';
+import Navbar from '../components/navbar.jsx';
 import { useNavigate } from 'react-router-dom';
 
 // If you haven't already, import Tailwind's base styles (usually in your index.css)

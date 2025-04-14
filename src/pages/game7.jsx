@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Tone from "tone";
 import Matter from "matter-js";
 import { useNavigate } from "react-router-dom";
-import Navbar from '../components/Navbar';
+import Navbar from '../components/navbar.jsx';
 
 export default function PlinkoGame({ cost = 20, deductCoins = () => true, user, onLogout }) {
   const canvasRef = useRef(null);
