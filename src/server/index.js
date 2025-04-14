@@ -53,182 +53,206 @@ const io = new Server(server, {
   }
 });
 
-// Connect to MongoDB
-connectDB();
+// Modified initialization with async IIFE
+(async function startServer() {
+  try {
+    // Connect to MongoDB first
+    console.log('Connecting to MongoDB...');
+    await connectDB();
+    console.log('MongoDB connection established');
 
-// Middleware
-app.use(cors({
-  origin: '*', // Allow all origins
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  credentials: false
-}));
-app.use(express.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
-// Test route
-app.get('/', (req, res) => {
-  res.json({ message: 'Server is running!' });
-});
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/payment', paymentRoutes);
-
-// Socket.io connection and events
-const activeGames = new Map(); // Store active games by room ID
-const waitingPlayers = new Map(); // Store players waiting for a match
-
-io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
-  
-  // When a user joins the matchmaking queue
-  socket.on('join_matchmaking', (userData) => {
-    const { gameType, userId, username } = userData;
-    console.log(`${username} (${userId}) joined matchmaking for ${gameType}`);
-    
-    // Store the player in the waiting list with their game preference
-    waitingPlayers.set(socket.id, {
-      userId,
-      username,
-      gameType,
-      socketId: socket.id,
-      joinedAt: Date.now()
-    });
-    
-    // Check if there's another player waiting for the same game type
-    const players = Array.from(waitingPlayers.values())
-      .filter(player => player.gameType === gameType && player.socketId !== socket.id);
-    
-    if (players.length > 0) {
-      // Take the player who's been waiting the longest
-      const opponent = players.sort((a, b) => a.joinedAt - b.joinedAt)[0];
-      
-      // Create a new game room
-      const roomId = `game_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      
-      // Remove both players from waiting list
-      waitingPlayers.delete(socket.id);
-      waitingPlayers.delete(opponent.socketId);
-      
-      // Add players to the room
-      socket.join(roomId);
-      io.sockets.sockets.get(opponent.socketId)?.join(roomId);
-      
-      // Initialize game state
-      const gameState = initializeGameState(gameType);
-      activeGames.set(roomId, {
-        gameType,
-        players: [
-          { userId, username, socketId: socket.id },
-          { userId: opponent.userId, username: opponent.username, socketId: opponent.socketId }
-        ],
-        state: gameState,
-        currentTurn: Math.random() < 0.5 ? socket.id : opponent.socketId, // Randomly choose who starts
-        startTime: Date.now()
-      });
-      
-      // Notify both players that a match has been found
-      io.to(roomId).emit('match_found', {
-        roomId,
-        gameType,
-        players: [
-          { userId, username },
-          { userId: opponent.userId, username: opponent.username }
-        ],
-        initialState: gameState,
-        currentTurn: activeGames.get(roomId).currentTurn
-      });
-    }
-  });
-  
-  // When a player makes a move
-  socket.on('game_move', ({ roomId, move }) => {
-    const game = activeGames.get(roomId);
-    
-    if (!game) {
-      socket.emit('error', { message: 'Game not found' });
-      return;
-    }
-    
-    // Check if it's the player's turn
-    if (game.currentTurn !== socket.id) {
-      socket.emit('error', { message: 'Not your turn' });
-      return;
-    }
-    
-    // Update game state based on the move
-    const updatedState = processGameMove(game.gameType, game.state, move);
-    
-    // Check for win or draw
-    const result = checkGameResult(game.gameType, updatedState);
-    
-    // Update the game state
-    game.state = updatedState;
-    
-    // Switch turns if game is still ongoing
-    if (!result.gameOver) {
-      // Find other player's socket ID
-      const otherPlayer = game.players.find(p => p.socketId !== socket.id);
-      game.currentTurn = otherPlayer.socketId;
-    }
-    
-    // Emit updated state to all players in the room
-    io.to(roomId).emit('game_update', {
-      state: updatedState,
-      lastMove: move,
-      currentTurn: game.currentTurn,
-      result: result.gameOver ? result : null
-    });
-    
-    // If game is over, clean up
-    if (result.gameOver) {
-      // Maybe store the result in the database here
-      setTimeout(() => {
-        activeGames.delete(roomId);
-      }, 30000); // Delete game data after 30 seconds
-    }
-  });
-  
-  // When a player cancels matchmaking
-  socket.on('cancel_matchmaking', () => {
-    if (waitingPlayers.has(socket.id)) {
-      waitingPlayers.delete(socket.id);
-      console.log(`User ${socket.id} cancelled matchmaking`);
-    }
-  });
-  
-  // When a player leaves a game
-  socket.on('leave_game', ({ roomId }) => {
-    handlePlayerLeave(socket, roomId);
-  });
-  
-  // When a player disconnects
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    
-    // Remove from waiting players if applicable
-    if (waitingPlayers.has(socket.id)) {
-      waitingPlayers.delete(socket.id);
-    }
-    
-    // Handle leaving any active games
-    for (const [roomId, game] of activeGames.entries()) {
-      if (game.players.some(p => p.socketId === socket.id)) {
-        handlePlayerLeave(socket, roomId);
-        break;
+    // Now setup Express middleware after DB connection
+    app.use(cors({
+      origin: '*', // Allow all origins
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+      credentials: false
+    }));
+    app.use(express.json());
+    app.use(session({
+      secret: process.env.SESSION_SECRET || 'your-secret-key',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
       }
-    }
+    }));
+
+    // Test route
+    app.get('/', (req, res) => {
+      res.json({ message: 'Server is running!' });
+    });
+
+    // Routes - only add after DB connection is established
+    app.use('/api/auth', authRoutes);
+    app.use('/api/payment', paymentRoutes);
+
+    // Start the server
+    const PORT = process.env.PORT || 5002;
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log('Socket.io listening for connections');
+    });
+
+    // Socket.io setup
+    setupSocketIO();
+    
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+})();
+
+// Extract socket.io setup to a separate function
+function setupSocketIO() {
+  // Socket.io connection and events
+  const activeGames = new Map(); // Store active games by room ID
+  const waitingPlayers = new Map(); // Store players waiting for a match
+
+  io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+    
+    // When a user joins the matchmaking queue
+    socket.on('join_matchmaking', (userData) => {
+      const { gameType, userId, username } = userData;
+      console.log(`${username} (${userId}) joined matchmaking for ${gameType}`);
+      
+      // Store the player in the waiting list with their game preference
+      waitingPlayers.set(socket.id, {
+        userId,
+        username,
+        gameType,
+        socketId: socket.id,
+        joinedAt: Date.now()
+      });
+      
+      // Check if there's another player waiting for the same game type
+      const players = Array.from(waitingPlayers.values())
+        .filter(player => player.gameType === gameType && player.socketId !== socket.id);
+      
+      if (players.length > 0) {
+        // Take the player who's been waiting the longest
+        const opponent = players.sort((a, b) => a.joinedAt - b.joinedAt)[0];
+        
+        // Create a new game room
+        const roomId = `game_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        
+        // Remove both players from waiting list
+        waitingPlayers.delete(socket.id);
+        waitingPlayers.delete(opponent.socketId);
+        
+        // Add players to the room
+        socket.join(roomId);
+        io.sockets.sockets.get(opponent.socketId)?.join(roomId);
+        
+        // Initialize game state
+        const gameState = initializeGameState(gameType);
+        activeGames.set(roomId, {
+          gameType,
+          players: [
+            { userId, username, socketId: socket.id },
+            { userId: opponent.userId, username: opponent.username, socketId: opponent.socketId }
+          ],
+          state: gameState,
+          currentTurn: Math.random() < 0.5 ? socket.id : opponent.socketId, // Randomly choose who starts
+          startTime: Date.now()
+        });
+        
+        // Notify both players that a match has been found
+        io.to(roomId).emit('match_found', {
+          roomId,
+          gameType,
+          players: [
+            { userId, username },
+            { userId: opponent.userId, username: opponent.username }
+          ],
+          initialState: gameState,
+          currentTurn: activeGames.get(roomId).currentTurn
+        });
+      }
+    });
+    
+    // When a player makes a move
+    socket.on('game_move', ({ roomId, move }) => {
+      const game = activeGames.get(roomId);
+      
+      if (!game) {
+        socket.emit('error', { message: 'Game not found' });
+        return;
+      }
+      
+      // Check if it's the player's turn
+      if (game.currentTurn !== socket.id) {
+        socket.emit('error', { message: 'Not your turn' });
+        return;
+      }
+      
+      // Update game state based on the move
+      const updatedState = processGameMove(game.gameType, game.state, move);
+      
+      // Check for win or draw
+      const result = checkGameResult(game.gameType, updatedState);
+      
+      // Update the game state
+      game.state = updatedState;
+      
+      // Switch turns if game is still ongoing
+      if (!result.gameOver) {
+        // Find other player's socket ID
+        const otherPlayer = game.players.find(p => p.socketId !== socket.id);
+        game.currentTurn = otherPlayer.socketId;
+      }
+      
+      // Emit updated state to all players in the room
+      io.to(roomId).emit('game_update', {
+        state: updatedState,
+        lastMove: move,
+        currentTurn: game.currentTurn,
+        result: result.gameOver ? result : null
+      });
+      
+      // If game is over, clean up
+      if (result.gameOver) {
+        // Maybe store the result in the database here
+        setTimeout(() => {
+          activeGames.delete(roomId);
+        }, 30000); // Delete game data after 30 seconds
+      }
+    });
+    
+    // When a player cancels matchmaking
+    socket.on('cancel_matchmaking', () => {
+      if (waitingPlayers.has(socket.id)) {
+        waitingPlayers.delete(socket.id);
+        console.log(`User ${socket.id} cancelled matchmaking`);
+      }
+    });
+    
+    // When a player leaves a game
+    socket.on('leave_game', ({ roomId }) => {
+      handlePlayerLeave(socket, roomId);
+    });
+    
+    // When a player disconnects
+    socket.on('disconnect', () => {
+      console.log('User disconnected:', socket.id);
+      
+      // Remove from waiting players if applicable
+      if (waitingPlayers.has(socket.id)) {
+        waitingPlayers.delete(socket.id);
+      }
+      
+      // Handle leaving any active games
+      for (const [roomId, game] of activeGames.entries()) {
+        if (game.players.some(p => p.socketId === socket.id)) {
+          handlePlayerLeave(socket, roomId);
+          break;
+        }
+      }
+    });
   });
-});
+}
 
 // Helper function to handle a player leaving a game
 function handlePlayerLeave(socket, roomId) {
@@ -362,10 +386,4 @@ app.use((err, req, res, next) => {
 // Handle 404 routes
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
-});
-
-const PORT = process.env.PORT || 5002;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Socket.io listening for connections`);
 }); 
