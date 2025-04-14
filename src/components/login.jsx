@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { signInWithGoogle } from "../config/firebaseConfig";
 import axios from 'axios';
 
-const Login = ({ setUser }) => {
-  const [isLogin, setIsLogin] = useState(true);
+const Login = ({ setUser, isLogin: initialIsLogin }) => {
+  const [isLogin, setIsLogin] = useState(initialIsLogin !== false);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -14,6 +14,11 @@ const Login = ({ setUser }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Update isLogin when the prop changes
+  useEffect(() => {
+    setIsLogin(initialIsLogin !== false);
+  }, [initialIsLogin]);
 
   // Debug useEffect to track isLogin changes
   useEffect(() => {
@@ -506,44 +511,13 @@ const Login = ({ setUser }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            {/* GUARANTEED TO WORK SOLUTION - Plain HTML button with direct event handler */}
-            <div
-              id="toggle-auth-button"
-              role="button"
-              tabIndex={0}
-              onClick={function() {
-                console.log("TOGGLE AUTH BUTTON CLICKED!");
-                if(isLogin) {
-                  // Switch to registration
-                  document.title = "Create Account | Logic Length";
-                  console.log("Setting isLogin to FALSE");
-                  setIsLogin(false);
-                } else {
-                  // Switch to login
-                  document.title = "Login | Logic Length";
-                  console.log("Setting isLogin to TRUE");
-                  setIsLogin(true);
-                }
-                
-                // Clear form
-                setFormData({
-                  username: "",
-                  password: "",
-                  email: ""
-                });
-                
-                // Clear errors
-                setError("");
-              }}
-              onKeyPress={function(e) {
-                if (e.key === "Enter") {
-                  e.target.click();
-                }
-              }}
-              className="mx-auto bg-purple-700 text-white px-8 py-3 rounded-lg font-bold shadow-xl cursor-pointer"
+            {/* DIRECT LINK WITHOUT STATE MANAGEMENT */}
+            <Link
+              to={isLogin ? "/register" : "/login"}
+              className="inline-block bg-purple-700 hover:bg-purple-600 text-white px-8 py-3 rounded-lg font-bold transition-all duration-300 hover:scale-105 shadow-lg cursor-pointer"
             >
               {isLogin ? "Create New Account" : "Back to Login"}
-            </div>
+            </Link>
           </div>
           
           {/* Glowing corners */}

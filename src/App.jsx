@@ -145,7 +145,13 @@ const App = () => {
       <MultiplayerProvider>
         <Routes>
           {/* If there's no user, render Login page */}
-          <Route path="/" element={!user ? <Login setUser={setUser} /> : <Navigate to="/home" />} />
+          <Route path="/" element={!user ? <Login setUser={setUser} isLogin={true} /> : <Navigate to="/home" />} />
+          
+          {/* Add explicit login route */}
+          <Route path="/login" element={!user ? <Login setUser={setUser} isLogin={true} /> : <Navigate to="/home" />} />
+          
+          {/* Add explicit register route */}
+          <Route path="/register" element={!user ? <Login setUser={setUser} isLogin={false} /> : <Navigate to="/home" />} />
 
           {/* Protected Home Page */}
           <Route
