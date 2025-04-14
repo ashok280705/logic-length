@@ -491,26 +491,27 @@ const Login = ({ setUser }) => {
             </button>
           </form>
           
-          <div className="mt-6 text-center text-sm">
-            <p className="text-[#b69fff]">
+          <div className="mt-6 text-center">
+            <p className="text-[#b69fff] mb-3">
               {isLogin ? "Don't have an account?" : "Already have an account?"}
-              <button 
-                type="button" 
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError("");
-                  setFormData({
-                    username: "",
-                    password: "",
-                    email: ""
-                  });
-                }}
-                className="ml-1 text-[#8b5cf6] hover:text-white hover:underline transition-all duration-300 focus:outline-none"
-                disabled={isLoading}
-              >
-                {isLogin ? "Create one" : "Login here"}
-              </button>
             </p>
+            <button 
+              type="button" 
+              onClick={() => {
+                console.log("Toggle login/signup form clicked");
+                setError("");
+                setIsLogin(prevState => !prevState);
+                setFormData({
+                  ...formData,
+                  password: "",
+                  email: isLogin ? "" : formData.email
+                });
+              }}
+              className="px-6 py-2 bg-[#6320dd] text-white rounded-lg font-medium hover:bg-[#8b5cf6] focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-colors"
+              disabled={isLoading}
+            >
+              {isLogin ? "Create New Account" : "Back to Login"}
+            </button>
           </div>
           
           {/* Glowing corners */}
