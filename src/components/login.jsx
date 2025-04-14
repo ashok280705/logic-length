@@ -545,71 +545,92 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            {/* ULTRA SIMPLE REGISTRATION BUTTON */}
+            {/* DIRECT HTML REGISTRATION BUTTON */}
             {isLogin && (
-              <button
-                type="button"
-                onClick={async () => {
-                  console.log("CREATE ACCOUNT BUTTON CLICKED");
-                  
-                  // Show registration form 
-                  if (isLogin) {
-                    // Direct DOM manipulation to ensure change happens
-                    document.title = "Create Account | Logic Length";
-                    setIsLogin(false);
-                    
-                    // Force hard navigation if needed
-                    if (window.location.pathname !== "/register") {
-                      window.location.href = window.location.origin + "/register";
+              <div>
+                <button
+                  id="createAccountButton"
+                  type="button"
+                  style={{
+                    width: "100%", 
+                    padding: "12px 24px",
+                    background: "#6320dd",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontWeight: "bold",
+                    cursor: "pointer !important",
+                    fontSize: "16px",
+                    pointerEvents: "auto"
+                  }}
+                >
+                  Create New Account
+                </button>
+                {/* Direct script execution for guaranteed click handler */}
+                <script dangerouslySetInnerHTML={{__html: `
+                  (function() {
+                    try {
+                      var btn = document.getElementById('createAccountButton');
+                      if (btn) {
+                        btn.onclick = function(e) {
+                          console.log('Create account button clicked via direct DOM');
+                          window.location.href = '/register';
+                          return false;
+                        };
+                        console.log('Successfully attached click handler to create account button');
+                      } else {
+                        console.error('Could not find create account button');
+                      }
+                    } catch(e) {
+                      console.error('Error attaching click handler:', e);
                     }
-                  }
-                }}
-                style={{
-                  width: "100%", 
-                  padding: "12px 24px",
-                  background: "#6320dd",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  fontSize: "16px"
-                }}
-              >
-                Create New Account
-              </button>
+                  })();
+                `}} />
+              </div>
             )}
             
-            {/* ULTRA SIMPLE LOGIN BUTTON */}
+            {/* DIRECT HTML LOGIN BUTTON */}
             {!isLogin && (
-              <button
-                type="button"
-                onClick={() => {
-                  console.log("BACK TO LOGIN BUTTON CLICKED");
-                  
-                  // Show login form
-                  document.title = "Login | Logic Length";
-                  setIsLogin(true);
-                  
-                  // Force hard navigation if needed
-                  if (window.location.pathname !== "/login") {
-                    window.location.href = window.location.origin + "/login";
-                  }
-                }}
-                style={{
-                  width: "100%", 
-                  padding: "12px 24px",
-                  background: "#4c1d95",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  fontSize: "16px"
-                }}
-              >
-                Back to Login
-              </button>
+              <div>
+                <button
+                  id="backToLoginButton"
+                  type="button"
+                  style={{
+                    width: "100%", 
+                    padding: "12px 24px",
+                    background: "#4c1d95",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontWeight: "bold",
+                    cursor: "pointer !important",
+                    fontSize: "16px",
+                    pointerEvents: "auto"
+                  }}
+                >
+                  Back to Login
+                </button>
+                {/* Direct script execution for guaranteed click handler */}
+                <script dangerouslySetInnerHTML={{__html: `
+                  (function() {
+                    try {
+                      var btn = document.getElementById('backToLoginButton');
+                      if (btn) {
+                        btn.onclick = function(e) {
+                          console.log('Back to login button clicked via direct DOM');
+                          window.location.href = '/login';
+                          return false;
+                        };
+                        console.log('Successfully attached click handler to back to login button');
+                      } else {
+                        console.error('Could not find back to login button');
+                      }
+                    } catch(e) {
+                      console.error('Error attaching click handler:', e);
+                    }
+                  })();
+                `}} />
+              </div>
             )}
           </div>
           
