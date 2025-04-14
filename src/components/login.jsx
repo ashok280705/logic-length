@@ -15,6 +15,16 @@ const Login = ({ setUser }) => {
   const [pageLoading, setPageLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Debug useEffect to track isLogin changes
+  useEffect(() => {
+    console.log("isLogin state changed to:", isLogin);
+  }, [isLogin]);
+
+  // Debug useEffect to track formData changes
+  useEffect(() => {
+    console.log("formData state changed:", formData);
+  }, [formData]);
+
   // Page loading animation
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -495,23 +505,31 @@ const Login = ({ setUser }) => {
             <p className="text-[#b69fff] mb-3">
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
-            <button 
-              type="button" 
-              onClick={() => {
-                console.log("Toggle login/signup form clicked");
+            
+            <a 
+              href="#"
+              onClick={(e) => {
+                e.preventDefault(); // Prevent default anchor behavior
+                e.stopPropagation(); // Stop propagation
+                console.log("Toggle login/signup CLICKED");
+                
+                // Toggle form state
+                const newIsLogin = !isLogin;
+                console.log("Setting isLogin to:", newIsLogin);
+                setIsLogin(newIsLogin);
+                
+                // Reset form data appropriately
                 setError("");
-                setIsLogin(prevState => !prevState);
-                setFormData({
-                  ...formData,
+                setFormData(prev => ({
+                  username: prev.username,
                   password: "",
-                  email: isLogin ? "" : formData.email
-                });
+                  email: newIsLogin ? "" : prev.email
+                }));
               }}
-              className="px-6 py-2 bg-[#6320dd] text-white rounded-lg font-medium hover:bg-[#8b5cf6] focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-colors"
-              disabled={isLoading}
+              className="inline-block px-6 py-2 bg-[#6320dd] text-white rounded-lg font-medium hover:bg-[#8b5cf6] focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-colors cursor-pointer select-none"
             >
               {isLogin ? "Create New Account" : "Back to Login"}
-            </button>
+            </a>
           </div>
           
           {/* Glowing corners */}
