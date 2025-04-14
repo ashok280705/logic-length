@@ -511,13 +511,33 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            {/* DIRECT LINK WITHOUT STATE MANAGEMENT */}
-            <Link
-              to={isLogin ? "/register" : "/login"}
-              className="inline-block bg-purple-700 hover:bg-purple-600 text-white px-8 py-3 rounded-lg font-bold transition-all duration-300 hover:scale-105 shadow-lg cursor-pointer"
+            {/* PLAIN VANILLA HTML BUTTON - GUARANTEED TO WORK */}
+            <a 
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                
+                // Log for debugging
+                console.log("CREATE ACCOUNT CLICKED", { isLogin });
+                
+                // Force URL change
+                window.location.href = isLogin ? 
+                  window.location.origin + "/register" : 
+                  window.location.origin + "/login";
+              }}
+              style={{
+                backgroundColor: "#6320dd",
+                color: "white",
+                fontWeight: "bold",
+                padding: "12px 24px",
+                borderRadius: "8px", 
+                cursor: "pointer",
+                textDecoration: "none",
+                display: "inline-block"
+              }}
             >
               {isLogin ? "Create New Account" : "Back to Login"}
-            </Link>
+            </a>
           </div>
           
           {/* Glowing corners */}
