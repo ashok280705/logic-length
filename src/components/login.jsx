@@ -32,13 +32,20 @@ const Login = ({ setUser }) => {
     setError("");
   };
 
+  // Get the appropriate server URL based on environment
+  const getServerUrl = () => {
+    const isLocalDevelopment = window.location.hostname === 'localhost';
+    return isLocalDevelopment ? 'http://localhost:5002' : 'https://logic-length.onrender.com';
+  };
+
   // Handle Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Simplify axios configuration
-      const response = await axios.post('http://localhost:5002/api/auth/login', {
+      // Use dynamic server URL
+      const serverUrl = getServerUrl();
+      const response = await axios.post(`${serverUrl}/api/auth/login`, {
         username: formData.username,
         password: formData.password
       });
@@ -51,7 +58,7 @@ const Login = ({ setUser }) => {
       if (error.response) {
         setError(error.response.data.message || "Login failed! Please check your credentials.");
       } else if (error.request) {
-        setError("Server is not responding. Please check if it's running at http://localhost:5002");
+        setError("Server is not responding. Please check if it's running at " + serverUrl);
       } else {
         setError("Login failed! " + error.message);
       }
@@ -87,8 +94,9 @@ const Login = ({ setUser }) => {
     try {
       console.log("Submitting registration data:", formData);
       
-      // Simplify axios configuration
-      const response = await axios.post('http://localhost:5002/api/auth/register', formData);
+      // Use dynamic server URL
+      const serverUrl = getServerUrl();
+      const response = await axios.post(`${serverUrl}/api/auth/register`, formData);
       
       console.log("Registration response:", response.data);
       setError("");
@@ -110,7 +118,7 @@ const Login = ({ setUser }) => {
       } else if (error.request) {
         // The request was made but no response was received
         console.error("Error request:", error.request);
-        setError("Server is not responding. Please check if it's running at http://localhost:5002");
+        setError("Server is not responding. Please check if it's running at " + serverUrl);
       } else {
         // Something happened in setting up the request
         console.error("Error message:", error.message);
@@ -169,7 +177,9 @@ const Login = ({ setUser }) => {
         // Try to update user data in the background
         setTimeout(async () => {
           try {
-            const response = await axios.post('/api/auth/google-signin', googleAuthData);
+            // Use dynamic server URL
+            const serverUrl = getServerUrl();
+            const response = await axios.post(`${serverUrl}/api/auth/google-signin`, googleAuthData);
             console.log("Background API call successful:", response?.data);
             
             if (response?.data?.success) {

@@ -8,9 +8,11 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5002',
+        target: process.env.NODE_ENV === 'production' 
+          ? 'https://logic-length.onrender.com'
+          : 'http://localhost:5002',
         changeOrigin: true,
-        secure: false,
+        secure: true,
         rewrite: (path) => path
       }
     }

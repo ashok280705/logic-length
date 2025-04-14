@@ -6,8 +6,9 @@ const DeploymentHandler = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Configure axios for deployment
-    const serverUrl = 'http://localhost:5002';
+    // Configure axios for deployment - use production URL when not in development
+    const isLocalDevelopment = window.location.hostname === 'localhost';
+    const serverUrl = isLocalDevelopment ? 'http://localhost:5002' : 'https://logic-length.onrender.com';
     console.log('Connecting to server at:', serverUrl);
     
     // Set axios defaults
