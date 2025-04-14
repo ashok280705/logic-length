@@ -114,6 +114,25 @@ const Login = ({ setUser }) => {
 
       console.log("Google Sign-In successful, processing user data:", googleUser);
       
+      // Create a minimal user object to ensure navigation works
+      const minimalUser = {
+        ...googleUser,
+        coins: 50,
+        level: 1,
+        xp: 0,
+        transactions: []
+      };
+      
+      // Set user in localStorage and state immediately to ensure navigation works
+      console.log("Setting minimal user data:", minimalUser);
+      localStorage.setItem("user", JSON.stringify(minimalUser));
+      setUser(minimalUser);
+      
+      // Navigate immediately (before API calls that might fail)
+      console.log("Navigating to home page with minimal user...");
+      navigate("/home", { replace: true });
+      
+      // Then try API operations in the background
       try {
         // Log the data we're sending to the server
         const googleAuthData = {
@@ -125,88 +144,38 @@ const Login = ({ setUser }) => {
         
         console.log("Sending Google auth data to server:", googleAuthData);
         
-        const response = await axios.post('/api/auth/google-signin', googleAuthData)
-          .catch(error => {
-            console.error("API call error details:", error.response || error);
-            throw error;
-          });
-        
-        console.log("Server response for Google sign-in:", response?.data);
-        
-        if (response?.data?.success) {
-          console.log("User found in database:", response.data.user);
-          
-          const existingUser = response.data.user;
-          const mergedUser = {
-            ...googleUser,
-            id: existingUser.id || googleUser.id || googleUser.uid,
-            username: existingUser.username || googleUser.username || googleUser.displayName,
-            coins: existingUser.coins || 0,
-            transactions: existingUser.transactions || [],
-            level: existingUser.level || 1,
-            xp: existingUser.xp || 0
-          };
-          
-          console.log("Final user data after merging:", mergedUser);
-          localStorage.setItem("user", JSON.stringify(mergedUser));
-          setUser(mergedUser);
-          
-          // Small delay to ensure state is updated before navigation
-          setTimeout(() => {
-            console.log("Navigating to home page...");
-            navigate("/home");
-          }, 500);
-        } else {
-          // Create new user with default values
-          const newUser = {
-            ...googleUser,
-            username: googleUser.displayName || googleUser.email.split('@')[0],
-            coins: 50,
-            level: 1,
-            xp: 0,
-            transactions: []
-          };
-          
-          console.log("Creating new user in database:", newUser);
-          
-          // Try to create the user in the database
+        // Try to update user data in the background
+        setTimeout(async () => {
           try {
-            const createResponse = await axios.post('/api/auth/create-google-user', newUser);
-            console.log("Create user response:", createResponse?.data);
-          } catch (createError) {
-            console.error("Failed to create user in database, but continuing with local login:", createError);
+            const response = await axios.post('/api/auth/google-signin', googleAuthData);
+            console.log("Background API call successful:", response?.data);
+            
+            if (response?.data?.success) {
+              // Update user data with server data
+              const existingUser = response.data.user;
+              const mergedUser = {
+                ...googleUser,
+                id: existingUser.id || googleUser.id || googleUser.uid,
+                username: existingUser.username || googleUser.username || googleUser.displayName,
+                coins: existingUser.coins || 0,
+                transactions: existingUser.transactions || [],
+                level: existingUser.level || 1,
+                xp: existingUser.xp || 0
+              };
+              
+              console.log("Updating user data in background:", mergedUser);
+              localStorage.setItem("user", JSON.stringify(mergedUser));
+              setUser(mergedUser);
+            }
+          } catch (backgroundError) {
+            console.error("Background API call failed:", backgroundError);
+            // User is already navigated to home, so no need to handle this error
           }
-          
-          localStorage.setItem("user", JSON.stringify(newUser));
-          setUser(newUser);
-          
-          // Small delay to ensure state is updated before navigation
-          setTimeout(() => {
-            console.log("Navigating to home page...");
-            navigate("/home");
-          }, 500);
-        }
+        }, 1000);
+        
       } catch (apiError) {
         console.error("API error during Google sign-in:", apiError);
-        
-        // Fallback mode - create a local user without saving to DB
-        console.log("Using fallback mode - creating local user without DB save");
-        const fallbackUser = {
-          ...googleUser,
-          coins: 50,
-          level: 1,
-          xp: 0,
-          transactions: []
-        };
-        
-        localStorage.setItem("user", JSON.stringify(fallbackUser));
-        setUser(fallbackUser);
-        
-        // Small delay to ensure state is updated before navigation
-        setTimeout(() => {
-          console.log("Navigating to home page in fallback mode...");
-          navigate("/home");
-        }, 500);
+        // User is already navigated, so no need to handle this error
       }
     } catch (error) {
       console.error("Google Sign-In Error:", error);
