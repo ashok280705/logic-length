@@ -506,26 +506,40 @@ const Login = ({ setUser }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            <button 
-              type="button"
-              onClick={() => {
-                // Direct function call with no preventDefault or event handling
-                console.log("TOGGLE BUTTON CLICKED - DIRECT FUNCTION CALL");
-                // Force toggle the state directly
-                setIsLogin(isLogin === true ? false : true);
-                // Clear error messages
-                setError("");
-                // Reset form
-                setFormData({
-                  username: "",
-                  password: "",
-                  email: ""
-                });
-              }}
-              className="px-6 py-3 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors shadow-lg shadow-purple-900/30 hover:shadow-purple-900/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-purple-900"
-            >
-              {isLogin ? "Create New Account" : "Back to Login"}
-            </button>
+            {/* FIXED: Completely new approach using Links with different onClicks for reliability */}
+            {isLogin ? (
+              <div 
+                onClick={() => {
+                  console.log("SWITCHING TO REGISTER FORM");
+                  setIsLogin(false);
+                  setError("");
+                  setFormData({
+                    username: "",
+                    password: "",
+                    email: ""
+                  });
+                }}
+                className="inline-block cursor-pointer select-none px-6 py-3 bg-[#6320dd] hover:bg-[#4e1ebb] text-white rounded-lg font-medium transition-colors shadow-lg focus:outline-none"
+              >
+                Create New Account
+              </div>
+            ) : (
+              <div
+                onClick={() => {
+                  console.log("SWITCHING TO LOGIN FORM");
+                  setIsLogin(true);
+                  setError("");
+                  setFormData({
+                    username: "",
+                    password: "",
+                    email: ""
+                  });
+                }}
+                className="inline-block cursor-pointer select-none px-6 py-3 bg-[#6320dd] hover:bg-[#4e1ebb] text-white rounded-lg font-medium transition-colors shadow-lg focus:outline-none"
+              >
+                Back to Login
+              </div>
+            )}
           </div>
           
           {/* Glowing corners */}
