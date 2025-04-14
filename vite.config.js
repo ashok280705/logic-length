@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: process.env.VITE_SERVER_URL || 'http://localhost:5001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path
@@ -24,5 +24,12 @@ export default defineConfig({
         manualChunks: undefined
       }
     }
+  },
+  // Add base URL configuration
+  base: '/',
+  // Configure preview server
+  preview: {
+    port: 3000,
+    host: true
   }
 })

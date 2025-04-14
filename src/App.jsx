@@ -21,6 +21,10 @@ import axios from "axios";
 import { MultiplayerProvider } from "./components/multiplayer/MultiplayerContext.jsx";
 import MultiplayerTicTacToe from "./components/multiplayer/MultiplayerTicTacToe.jsx";
 
+// Configure axios defaults
+axios.defaults.baseURL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5001';
+axios.defaults.withCredentials = true;
+
 // Game coin requirements
 const GAME_COSTS = {
   tictactoe: 10,
