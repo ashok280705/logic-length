@@ -14,5 +14,15 @@ export default defineConfig({
         rewrite: (path) => path
       }
     }
+  },
+  // Add build configuration for SPA routing
+  build: {
+    outDir: 'dist',
+    // Make sure to generate a single JS bundle for simpler deployment
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
   }
 })

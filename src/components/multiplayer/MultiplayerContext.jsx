@@ -21,18 +21,53 @@ export const MultiplayerProvider = ({ children }) => {
   // Initialize socket connection
   useEffect(() => {
     // Connect to the socket server
-    const socketInstance = io('http://localhost:5002', {
-      withCredentials: true,
-      reconnectionAttempts: 5,
-      timeout: 10000,
-    });
+    // Use environment variable for server URL or fallback to development URL
+    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5002';
+    console.log('Connecting to server at:', serverUrl);
     
-    setSocket(socketInstance);
+    try {
+      // Make sure the serverUrl is used exactly as provided from env
+      const socketInstance = io(serverUrl, {
+        withCredentials: true,
+        reconnectionAttempts: 5,
+        timeout: 10000,
+        transports: ['websocket', 'polling'],
+        // Explicitly set secure to true for HTTPS connections
+        secure: serverUrl.startsWith('https'),
+        // Remove any path from the URL to avoid issues
+        path: '/socket.io/',
+        autoConnect: true,
+        // Add debug mode to see more detailed logs
+        debug: true
+      });
+      
+      console.log('Socket instance created with options:', {
+        url: serverUrl,
+        secure: serverUrl.startsWith('https'),
+        transports: ['websocket', 'polling']
+      });
+      
+      setSocket(socketInstance);
+      
+      // Add some test events to diagnose
+      socketInstance.io.on("error", (error) => {
+        console.error("Socket.io manager error:", error);
+        setConnectionError(`IO manager error: ${error.message}`);
+      });
+      
+      socketInstance.io.on("reconnect_attempt", (attempt) => {
+        console.log(`Socket.io reconnect attempt #${attempt}`);
+      });
+    } catch (error) {
+      console.error('Error creating socket connection:', error);
+      setConnectionError(`Failed to create socket connection: ${error.message}`);
+    }
     
     // Clean up on unmount
     return () => {
-      if (socketInstance) {
-        socketInstance.disconnect();
+      if (socket) {
+        console.log('Disconnecting socket on cleanup');
+        socket.disconnect();
       }
     };
   }, []);
@@ -43,15 +78,22 @@ export const MultiplayerProvider = ({ children }) => {
     
     // Connection events
     socket.on('connect', () => {
-      console.log('Connected to multiplayer server');
+      console.log('Connected to multiplayer server, socket ID:', socket.id);
       setIsConnected(true);
       setConnectionError(null);
     });
     
     socket.on('connect_error', (error) => {
       console.error('Connection error:', error);
-      setConnectionError('Failed to connect to multiplayer server');
+      setConnectionError(`Failed to connect to multiplayer server: ${error.message}`);
       setIsConnected(false);
+      
+      // Attempt some diagnostics
+      console.log('Connection diagnostics:', {
+        readyState: socket.io.engine?.transport?.ws?.readyState,
+        transport: socket.io.engine?.transport?.name,
+        hostname: window.location.hostname
+      });
     });
     
     socket.on('disconnect', (reason) => {
