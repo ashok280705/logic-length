@@ -67,15 +67,24 @@ const DeploymentHandler = ({ children }) => {
         // Try to ping the server
         console.log('Performing health check to server:', serverUrl);
         try {
-          // Try the root endpoint which should always be available
-          const response = await axios.get('/', { timeout: 10000 });
+          // Try the root API endpoint instead of "/"
+          const response = await axios.get(`${serverUrl}/api/auth/test`, { timeout: 10000 });
           console.log('Health check successful:', response.data);
           setConnectionStatus('connected');
-        } catch (healthError) {
-          console.warn('Health check failed:', healthError);
-          setConnectionStatus('degraded');
-          // Try a few more times with increasing delays
-          retryConnection(1);
+        } catch (firstError) {
+          console.warn('First health check failed, trying root endpoint...', firstError);
+          
+          // Fallback to trying the root endpoint
+          try {
+            const rootResponse = await axios.get(serverUrl, { timeout: 10000 });
+            console.log('Root endpoint check successful:', rootResponse.data);
+            setConnectionStatus('connected');
+          } catch (healthError) {
+            console.warn('Health check failed:', healthError);
+            setConnectionStatus('degraded');
+            // Try a few more times with increasing delays
+            retryConnection(1);
+          }
         }
         
         setIsLoading(false);
@@ -100,10 +109,23 @@ const DeploymentHandler = ({ children }) => {
       
       setTimeout(async () => {
         try {
-          const response = await axios.get('/', { timeout: 10000 });
-          console.log('Retry successful:', response.data);
-          setConnectionStatus('connected');
-          setIsLoading(false);
+          // Try multiple endpoints in sequence
+          try {
+            // First try auth test endpoint
+            const response = await axios.get(`${serverUrl}/api/auth/test`, { timeout: 10000 });
+            console.log('Auth test endpoint retry successful:', response.data);
+            setConnectionStatus('connected');
+            setIsLoading(false);
+            return;
+          } catch (authError) {
+            console.log('Auth endpoint retry failed, trying root endpoint...');
+            // Then try root endpoint
+            const rootResponse = await axios.get(serverUrl, { timeout: 10000 });
+            console.log('Root endpoint retry successful:', rootResponse.data);
+            setConnectionStatus('connected');
+            setIsLoading(false);
+            return;
+          }
         } catch (error) {
           console.error(`Retry ${attempt} failed:`, error);
           retryConnection(attempt + 1);
@@ -139,8 +161,16 @@ const DeploymentHandler = ({ children }) => {
   return (
     <>
       {connectionStatus !== 'connected' && 
-        <div className="fixed bottom-4 right-4 bg-red-800 text-white p-2 rounded-lg z-50 shadow-lg">
-          ⚠️ Server connection issues. Some features may not work.
+        <div className="fixed bottom-4 right-4 bg-yellow-700 text-white p-3 rounded-lg z-50 shadow-lg max-w-xs">
+          <div className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="font-medium">Server connection limited</p>
+              <p className="text-sm text-yellow-200">Please refresh the page if login/signup doesn't work.</p>
+            </div>
+          </div>
         </div>
       }
       {children}
