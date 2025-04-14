@@ -3,10 +3,15 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import session from 'express-session';
 import http from 'http';
-import { Server } from 'socket.io';
+// Use the global SocketIO instead of importing directly
+// import { Server } from 'socket.io';
+const { Server } = global.SocketIO || { Server: class {} };
 import connectDB from '../config/db.js';
 import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
+
+// Console log for debugging
+console.log('Server loaded, socket.io available:', !!global.SocketIO);
 
 dotenv.config();
 
@@ -14,7 +19,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: '*', // Allow connections from any domain
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -25,7 +30,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173'], // Your frontend URLs
+  origin: '*', // Allow connections from any domain
   credentials: true
 }));
 app.use(express.json());
