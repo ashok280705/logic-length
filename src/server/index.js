@@ -3,15 +3,43 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import session from 'express-session';
 import http from 'http';
-// Use the global SocketIO instead of importing directly
-// import { Server } from 'socket.io';
-const { Server } = global.SocketIO || { Server: class {} };
+
+// First try to use the global SocketIO
+let Server;
+if (global.SocketIO) {
+  console.log('Using global SocketIO');
+  Server = global.SocketIO.Server;
+} else {
+  // If global is not available, try direct import 
+  try {
+    console.log('Trying direct import of socket.io');
+    // Use dynamic import for ESM compatibility
+    const { createRequire } = await import('module');
+    const require = createRequire(import.meta.url);
+    const socketIO = require('socket.io');
+    Server = socketIO.Server;
+    console.log('Socket.io loaded via require');
+  } catch (error) {
+    console.error('Failed to load socket.io:', error);
+    // Create a dummy Server class for graceful fallback
+    Server = class DummyServer {
+      constructor() {
+        console.warn('Using dummy Socket.io server - no real-time functionality will be available');
+        this.sockets = { sockets: new Map() };
+      }
+      on() { console.warn('Dummy socket.io - on() called'); }
+      emit() { console.warn('Dummy socket.io - emit() called'); }
+      to() { return { emit: () => {} }; }
+    };
+  }
+}
+
 import connectDB from '../config/db.js';
 import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
 
 // Console log for debugging
-console.log('Server loaded, socket.io available:', !!global.SocketIO);
+console.log('Server loaded, Socket.io Server available:', !!Server);
 
 dotenv.config();
 
