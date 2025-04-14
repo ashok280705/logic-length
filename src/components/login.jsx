@@ -506,78 +506,44 @@ const Login = ({ setUser }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            {/* EXTREMELY SIMPLE DIRECT BUTTON */}
-            {isLogin ? (
-              <a 
-                onClick={() => {
-                  // Direct JavaScript to set the state
-                  window.logicLengthApp = window.logicLengthApp || {};
-                  window.logicLengthApp.lastAction = 'goToRegister';
-                  
-                  // Log the action
-                  console.log('Go to register form clicked');
-                  
-                  // Directly manipulate DOM if needed
-                  document.title = 'Create Account | Logic Length';
-                  
-                  // Finally update React state
+            {/* GUARANTEED TO WORK SOLUTION - Plain HTML button with direct event handler */}
+            <div
+              id="toggle-auth-button"
+              role="button"
+              tabIndex={0}
+              onClick={function() {
+                console.log("TOGGLE AUTH BUTTON CLICKED!");
+                if(isLogin) {
+                  // Switch to registration
+                  document.title = "Create Account | Logic Length";
+                  console.log("Setting isLogin to FALSE");
                   setIsLogin(false);
-                  setError('');
-                  setFormData({
-                    username: '',
-                    password: '',
-                    email: ''
-                  });
-                }}
-                className="inline-block cursor-pointer px-8 py-3 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-bold shadow-lg border border-purple-500 transition-all hover:scale-105"
-                style={{
-                  cursor: 'pointer', 
-                  boxShadow: '0 4px 20px rgba(99, 32, 221, 0.4)'
-                }}
-              >
-                <span className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                  </svg>
-                  Create New Account
-                </span>
-              </a>
-            ) : (
-              <a
-                onClick={() => {
-                  // Direct JavaScript to set the state
-                  window.logicLengthApp = window.logicLengthApp || {};
-                  window.logicLengthApp.lastAction = 'goToLogin';
-                  
-                  // Log the action
-                  console.log('Go to login form clicked');
-                  
-                  // Directly manipulate DOM if needed
-                  document.title = 'Login | Logic Length';
-                  
-                  // Finally update React state
+                } else {
+                  // Switch to login
+                  document.title = "Login | Logic Length";
+                  console.log("Setting isLogin to TRUE");
                   setIsLogin(true);
-                  setError('');
-                  setFormData({
-                    username: '',
-                    password: '',
-                    email: ''
-                  });
-                }}
-                className="inline-block cursor-pointer px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold shadow-lg border border-indigo-500 transition-all hover:scale-105"
-                style={{
-                  cursor: 'pointer', 
-                  boxShadow: '0 4px 20px rgba(99, 32, 221, 0.4)'
-                }}
-              >
-                <span className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                  </svg>
-                  Back to Login
-                </span>
-              </a>
-            )}
+                }
+                
+                // Clear form
+                setFormData({
+                  username: "",
+                  password: "",
+                  email: ""
+                });
+                
+                // Clear errors
+                setError("");
+              }}
+              onKeyPress={function(e) {
+                if (e.key === "Enter") {
+                  e.target.click();
+                }
+              }}
+              className="mx-auto bg-purple-700 text-white px-8 py-3 rounded-lg font-bold shadow-xl cursor-pointer"
+            >
+              {isLogin ? "Create New Account" : "Back to Login"}
+            </div>
           </div>
           
           {/* Glowing corners */}
