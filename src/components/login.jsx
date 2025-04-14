@@ -506,44 +506,78 @@ const Login = ({ setUser }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            {/* ULTRA SIMPLE APPROACH - plain HTML button with inline onClick */}
-            <button 
-              type="button"
-              style={{cursor: 'pointer', pointerEvents: 'auto'}}
-              onClick={function() {
-                if(isLogin) {
-                  window.localStorage.setItem('lastAction', 'switchToRegister');
-                  window.location.href = '#register';
-                  document.getElementById('toggleFormState').click();
-                } else {
-                  window.localStorage.setItem('lastAction', 'switchToLogin');
-                  window.location.href = '#login';
-                  document.getElementById('toggleFormState').click();
-                }
-              }}
-              className="inline-block px-6 py-3 bg-[#6320dd] hover:bg-[#4e1ebb] text-white rounded-lg font-medium transition-colors shadow-lg cursor-pointer"
-            >
-              {isLogin ? "Create New Account →" : "← Back to Login"}
-            </button>
-            
-            {/* Hidden button for state management */}
-            <button 
-              id="toggleFormState"
-              type="button"
-              style={{display: 'none'}}
-              onClick={() => {
-                console.log("FORM STATE CHANGE TRIGGERED");
-                setIsLogin(!isLogin);
-                setError("");
-                setFormData({
-                  username: "",
-                  password: "",
-                  email: ""
-                });
-              }}
-            >
-              Toggle Form
-            </button>
+            {/* EXTREMELY SIMPLE DIRECT BUTTON */}
+            {isLogin ? (
+              <a 
+                onClick={() => {
+                  // Direct JavaScript to set the state
+                  window.logicLengthApp = window.logicLengthApp || {};
+                  window.logicLengthApp.lastAction = 'goToRegister';
+                  
+                  // Log the action
+                  console.log('Go to register form clicked');
+                  
+                  // Directly manipulate DOM if needed
+                  document.title = 'Create Account | Logic Length';
+                  
+                  // Finally update React state
+                  setIsLogin(false);
+                  setError('');
+                  setFormData({
+                    username: '',
+                    password: '',
+                    email: ''
+                  });
+                }}
+                className="inline-block cursor-pointer px-8 py-3 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-bold shadow-lg border border-purple-500 transition-all hover:scale-105"
+                style={{
+                  cursor: 'pointer', 
+                  boxShadow: '0 4px 20px rgba(99, 32, 221, 0.4)'
+                }}
+              >
+                <span className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Create New Account
+                </span>
+              </a>
+            ) : (
+              <a
+                onClick={() => {
+                  // Direct JavaScript to set the state
+                  window.logicLengthApp = window.logicLengthApp || {};
+                  window.logicLengthApp.lastAction = 'goToLogin';
+                  
+                  // Log the action
+                  console.log('Go to login form clicked');
+                  
+                  // Directly manipulate DOM if needed
+                  document.title = 'Login | Logic Length';
+                  
+                  // Finally update React state
+                  setIsLogin(true);
+                  setError('');
+                  setFormData({
+                    username: '',
+                    password: '',
+                    email: ''
+                  });
+                }}
+                className="inline-block cursor-pointer px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold shadow-lg border border-indigo-500 transition-all hover:scale-105"
+                style={{
+                  cursor: 'pointer', 
+                  boxShadow: '0 4px 20px rgba(99, 32, 221, 0.4)'
+                }}
+              >
+                <span className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                  Back to Login
+                </span>
+              </a>
+            )}
           </div>
           
           {/* Glowing corners */}
