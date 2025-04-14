@@ -2,42 +2,29 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithGoogle } from "../config/firebaseConfig";
 import axios from 'axios';
-import { useConnection } from "./DeploymentHandler";
 
 const Login = ({ setUser, isLogin: initialIsLogin }) => {
   const [isLogin, setIsLogin] = useState(initialIsLogin !== false);
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-    email: ""
-  });
+  const [formData, setFormData] = useState({ username: "", password: "", email: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const navigate = useNavigate();
-  const connection = useConnection();
 
   // Update isLogin when the prop changes
   useEffect(() => {
     setIsLogin(initialIsLogin !== false);
   }, [initialIsLogin]);
 
-  // Debug useEffect to track isLogin changes
-  useEffect(() => {
-    console.log("isLogin state changed to:", isLogin);
-  }, [isLogin]);
-
-  // Debug useEffect to track formData changes
-  useEffect(() => {
-    console.log("formData state changed:", formData);
-  }, [formData]);
+  // Debug useEffects
+  useEffect(() => { console.log("isLogin state:", isLogin); }, [isLogin]);
+  useEffect(() => { console.log("formData state:", formData); }, [formData]);
 
   // Page loading animation
   useEffect(() => {
     const timer = setTimeout(() => {
       setPageLoading(false);
-    }, 1000); // Reduced from 1500ms to 1000ms for faster loading
-    
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -49,12 +36,12 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     setError("");
   };
 
-  // Use the server URL from connection context instead of recalculating
+  // Server and API functions remain the same
   const getServerUrl = () => {
-    return connection.serverUrl || window.API_BASE_URL;
+    const isLocal = window.location.hostname === 'localhost';
+    return isLocal ? 'http://localhost:5002' : 'https://logic-length.onrender.com';
   };
 
-  // Configure a pre-configured axios instance with longer timeout for Render
   const getAxiosInstance = (timeoutMs = 30000) => {
     const serverUrl = getServerUrl();
     console.log('Creating axios instance with server URL:', serverUrl);
@@ -69,14 +56,11 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
       }
     });
     
-    // Log all requests
     instance.interceptors.request.use(
       config => {
         console.log(`${config.method.toUpperCase()} request to ${config.url}`);
-        // Ensure URL has correct format and use direct access for MongoDB Atlas in /auth endpoints
         if (config.url.includes('/auth')) {
           console.log('Using direct MongoDB Atlas connection for auth');
-          // We keep the API path intact but add a flag to use direct Atlas connection
           config.headers['X-Use-Atlas-Direct'] = 'true';
         }
         
@@ -95,7 +79,7 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     return instance;
   };
 
-  // Handle Login with retry
+  // Handle Login function remains the same
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -103,8 +87,7 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     
     console.log(`Login attempt for user: ${formData.username}`);
     
-    // Use connection context max retries instead of hardcoded value
-    const maxRetries = connection.maxRetries;
+    const maxRetries = 2;
     let retryCount = 0;
     let success = false;
     
@@ -113,11 +96,10 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
         if (retryCount > 0) {
           console.log(`Retry attempt ${retryCount}/${maxRetries} for login...`);
           setError(`Connection attempt ${retryCount}/${maxRetries}... Please wait.`);
-          // Add a small delay between retries
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        const axiosInstance = getAxiosInstance(30000); // 30 second timeout
+        const axiosInstance = getAxiosInstance(30000);
         const response = await axiosInstance.post('/auth/login', {
           username: formData.username,
           password: formData.password
@@ -126,12 +108,11 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
         console.log("Login response:", response.data);
         
         if (response.data && response.data.user) {
-          // Success!
           localStorage.setItem("user", JSON.stringify(response.data));
           setUser(response.data);
           success = true;
           navigate("/home");
-          return; // Exit the function on success
+          return;
         } else {
           throw new Error("Invalid response format from server");
         }
@@ -139,13 +120,6 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
         retryCount++;
         console.error(`Login attempt ${retryCount} failed:`, error);
         
-        // If connection context shows we're already having connection issues,
-        // provide more helpful feedback
-        if (!connection.isConnected && retryCount === 1) {
-          setError("Server connection issues detected. We'll keep trying...");
-        }
-        
-        // Only set error message on last retry or non-network errors
         if (retryCount > maxRetries || (error.response && error.response.status !== 0)) {
           if (error.response) {
             setError(error.response.data?.message || "Login failed! Please check your credentials.");
@@ -161,13 +135,12 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     setIsLoading(false);
   };
 
-  // Handle Registration with retry and direct Atlas fallback
+  // Handle Registration function remains the same
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
     
-    // Enhanced form validation
     if (!formData.username || formData.username.length < 3) {
       setError("Username must be at least 3 characters");
       setIsLoading(false);
@@ -188,17 +161,14 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     
     console.log(`Registration attempt for user: ${formData.username}`);
     
-    // Use connection context max retries
-    const maxRetries = connection.maxRetries;
+    const maxRetries = 2;
     let retryCount = 0;
     let success = false;
     
-    // Create the registration user object
     const newUser = {
       username: formData.username,
       email: formData.email,
       password: formData.password,
-      // Default values
       coins: 50,
       level: 1,
       xp: 0,
@@ -216,31 +186,27 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
         if (retryCount > 0) {
           console.log(`Retry attempt ${retryCount}/${maxRetries} for registration...`);
           setError(`Connection attempt ${retryCount}/${maxRetries}... Please wait.`);
-          // Add a small delay between retries
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        // Last attempt, try direct Atlas connection
         if (retryCount === maxRetries) {
           console.log("Attempting direct Atlas connection as last resort");
         }
         
-        const axiosInstance = getAxiosInstance(40000); // 40 second timeout for registration
+        const axiosInstance = getAxiosInstance(40000);
         const response = await axiosInstance.post('/auth/register', newUser);
         
         console.log("Registration response:", response.data);
         
-        // Show success message and auto-fill login form
         alert("Registration successful! You can now login with your credentials.");
         setIsLogin(true);
         setFormData({ 
           ...formData,
-          password: "" // Clear password but keep username for easy login
+          password: ""
         });
         
         success = true;
         
-        // If on /register URL, redirect to /login
         if (window.location.pathname.includes('register')) {
           window.location.href = window.location.origin + '/login';
         }
@@ -250,13 +216,6 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
         retryCount++;
         console.error(`Registration attempt ${retryCount} failed:`, error);
         
-        // If connection context shows we're already having connection issues,
-        // provide more helpful feedback
-        if (!connection.isConnected && retryCount === 1) {
-          setError("Server connection issues detected. We'll keep trying...");
-        }
-        
-        // Only set error message on last retry or non-network errors
         if (retryCount > maxRetries || (error.response && error.response.status !== 0)) {
           if (error.response) {
             console.error("Error response:", error.response.data);
@@ -273,7 +232,7 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     setIsLoading(false);
   };
 
-  // Google Sign-In Handler with simpler approach
+  // Google Sign-In Handler remains the same
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError("");
@@ -288,7 +247,6 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
 
       console.log("Google Sign-In successful!");
       
-      // Create a user object to ensure navigation works
       const user = {
         ...googleUser,
         user: {
@@ -303,15 +261,11 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
         token: googleUser.accessToken || "google-auth-token"
       };
       
-      // Store user data and navigate
-      console.log("Setting user data:", user);
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
       
-      // Navigate to home page
       navigate("/home", { replace: true });
       
-      // Try to sync with backend in background
       setTimeout(async () => {
         try {
           const axiosInstance = getAxiosInstance(20000);
@@ -325,7 +279,6 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
           
           console.log("Backend sync successful:", response.data);
           
-          // Update user data if needed
           if (response.data && response.data.user) {
             const updatedUser = {
               ...user,
@@ -358,106 +311,71 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a001a] to-[#1a0050]">
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="w-20 h-20 border-t-4 border-r-4 border-[#6320dd] rounded-full animate-spin mx-auto mb-6"></div>
-          <h2 className="text-2xl font-bold text-white super-neon">Logic Length Games</h2>
-          <p className="text-[#b69fff] mt-2 loading-dots">Preparing amazing experience</p>
+          <div className="w-16 h-16 border-t-4 border-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-xl font-medium text-white">Loading</h2>
         </div>
       </div>
     );
   }
 
-  // Show connection status indicator when there are connection issues
-  const showConnectionStatus = !connection.isConnected || error.includes("Connection attempt");
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a001a] to-[#1a0050] relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,_rgba(99,32,221,0.1)_1px,_transparent_1px),_linear-gradient(to_bottom,_rgba(99,32,221,0.1)_1px,_transparent_1px)] bg-[size:20px_20px]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(139,92,246,0.3)_0%,_transparent_70%)]"></div>
-        
-        {/* Floating elements */}
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#6320dd] rounded-full opacity-20 blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-[#8b5cf6] rounded-full opacity-20 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-3/4 left-1/3 w-24 h-24 bg-[#4e1ebb] rounded-full opacity-20 blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-        
-        {/* Animated particles */}
-        <div className="particles-bg">
-          {[...Array(10)].map((_, i) => (
-            <div
-              key={i}
-              className="particle-elem"
-              style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                width: `${Math.random() * 6 + 2}px`,
-                height: `${Math.random() * 6 + 2}px`,
-                opacity: Math.random() * 0.3,
-                animationDuration: `${Math.random() * 20 + 10}s`,
-                animationDelay: `${Math.random() * 5}s`
-              }}
-            ></div>
-          ))}
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-900">
+      {/* Left Panel - Image/Branding */}
+      <div className="md:w-1/2 bg-gradient-to-br from-indigo-800 to-purple-900 flex items-center justify-center p-8 md:p-12">
+        <div className="max-w-md text-center md:text-left">
+          <img src="logo.png" alt="LogicLength Logo" className="h-20 mb-8 mx-auto md:mx-0" />
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            Logic Length Games
+          </h1>
+          <p className="text-lg text-indigo-200 mb-8">
+            Play games, compete with friends, and win exciting rewards. Join our gaming community today!
+          </p>
+          <div className="hidden md:block">
+            <div className="flex gap-4 mb-12">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-700/50 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+                <span className="text-indigo-200">Multiplayer Games</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-700/50 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+                <span className="text-indigo-200">Win Rewards</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-indigo-300/80 text-sm hidden md:block">
+            © {new Date().getFullYear()} Logic Length Games. All rights reserved.
+          </p>
         </div>
       </div>
       
-      {/* Main content */}
-      <div className="relative z-10 w-full max-w-md mx-4">
-        {/* Connection status banner - only shows when there are connection issues */}
-        {showConnectionStatus && !connection.isConnected && (
-          <div className="mb-4 p-3 bg-amber-900/60 text-amber-200 rounded-lg border border-amber-500/50 flex items-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-amber-900/30 transform -skew-x-12 animate-pulse"></div>
-            <svg className="animate-spin h-5 w-5 mr-3 text-amber-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <div className="relative z-10">
-              <span className="font-medium">Connection issues detected!</span>
-              <p className="text-sm">The app will continue to work, but some features may be limited.</p>
-            </div>
-            <button 
-              onClick={() => connection.retryConnection()} 
-              className="ml-auto bg-amber-800 hover:bg-amber-700 text-amber-100 text-sm py-1 px-2 rounded"
-            >
-              Retry
-            </button>
+      {/* Right Panel - Login/Register Form */}
+      <div className="md:w-1/2 flex items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-white">
+              {isLogin ? "Welcome Back" : "Create Your Account"}
+            </h2>
+            <p className="text-gray-400 mt-2">
+              {isLogin ? "Login to access your games" : "Join our gaming community"}
+            </p>
           </div>
-        )}
-        
-        <div className="bg-gradient-to-b from-[#1a0050] to-[#09001a] rounded-xl shadow-2xl transform transition-all duration-300 scale-100 opacity-100 animate-glow futuristic-border p-8 relative overflow-hidden">
-          {/* Diagonal glowing line */}
-          <div 
-            className="absolute w-[200%] h-[50px] bg-gradient-to-r from-transparent via-[#6320dd]/20 to-transparent -rotate-45 -translate-x-full animate-slide-right"
-            style={{
-              top: '40%',
-              animationDuration: '3s',
-              animationIterationCount: 'infinite',
-              animationTimingFunction: 'ease-in-out'
-            }}
-          ></div>
-          
-          {/* Logo */}
-          <div className="flex justify-center mb-6 perspective-container">
-            <img src="logo.png" alt="LogicLength Logo" className="h-16 animate-float perspective-element" />
-          </div>
-          
-          {/* Title */}
-          <h1 className="text-3xl font-bold text-center mb-2 super-neon">
-            {isLogin ? "Welcome Back" : "Create Account"}
-          </h1>
-          <p className="text-[#b69fff] text-center mb-6">
-            {isLogin ? "Login to access your account" : "Join our gaming community"}
-          </p>
           
           {/* Error message */}
           {error && (
-            <div className="mb-6 p-3 bg-red-900/50 text-red-300 rounded-lg border border-red-500 animate-pulse relative overflow-hidden">
-              <div className="absolute inset-0 bg-red-900/30 transform -skew-x-12 animate-pulse"></div>
-              <div className="relative z-10 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <div className="mb-6 p-3 bg-red-900/30 text-red-400 rounded-lg border border-red-700/50 text-sm">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 {error}
               </div>
@@ -465,96 +383,85 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
           )}
           
           {/* Form */}
-          <form onSubmit={isLogin ? handleLogin : handleRegister} className="space-y-4">
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#b69fff]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
+          <form onSubmit={isLogin ? handleLogin : handleRegister} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Username</label>
               <input
                 type="text"
                 name="username"
-                placeholder="Username"
                 value={formData.username}
                 onChange={handleInputChange}
-                className="w-full p-3 pl-10 bg-[#2a2a4d]/50 text-white placeholder-[#b69fff]/50 rounded-lg border border-[#6320dd]/50 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-transparent transition-all duration-300"
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Enter your username"
                 required
               />
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[#6320dd]/20 to-transparent pointer-events-none"></div>
             </div>
             
             {!isLogin && (
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#b69fff]">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
                 <input
                   type="email"
                   name="email"
-                  placeholder="Email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full p-3 pl-10 bg-[#2a2a4d]/50 text-white placeholder-[#b69fff]/50 rounded-lg border border-[#6320dd]/50 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-transparent transition-all duration-300"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Enter your email"
                   required
                 />
-                <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[#6320dd]/20 to-transparent pointer-events-none"></div>
               </div>
             )}
             
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#b69fff]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-400">Password</label>
+                {isLogin && (
+                  <a href="#" className="text-xs text-indigo-400 hover:text-indigo-300">
+                    Forgot password?
+                  </a>
+                )}
               </div>
               <input
                 type="password"
                 name="password"
-                placeholder="Password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="w-full p-3 pl-10 bg-[#2a2a4d]/50 text-white placeholder-[#b69fff]/50 rounded-lg border border-[#6320dd]/50 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] focus:border-transparent transition-all duration-300"
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Enter your password"
                 required
               />
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[#6320dd]/20 to-transparent pointer-events-none"></div>
             </div>
             
             <button 
               type="submit" 
-              className="w-full py-3 bg-gradient-to-r from-[#4e1ebb] to-[#8b5cf6] text-white rounded-lg font-semibold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#6320dd]/50 relative overflow-hidden border border-transparent hover:border-[#b69fff]/30 transform flex items-center justify-center"
+              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition duration-200"
               disabled={isLoading}
             >
               {isLoading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   {error && error.includes("Connection attempt") ? "Connecting..." : "Processing..."}
-                </>
+                </div>
               ) : (
-                <>{isLogin ? 'Sign In' : 'Sign Up'}</>
+                isLogin ? "Sign In" : "Create Account"
               )}
-              <div className="absolute inset-0 w-full h-full transition-all duration-300">
-                <div className="absolute left-0 top-0 h-full bg-white/10 w-8 transform -skew-x-12 animate-shimmer"></div>
-              </div>
             </button>
             
             <div className="relative flex items-center justify-center my-6">
-              <div className="absolute left-0 right-0 h-[1px] bg-[#6320dd]/30"></div>
-              <div className="px-4 bg-[#09001a] text-[#b69fff] text-sm relative z-10">OR</div>
+              <div className="absolute left-0 right-0 h-[1px] bg-gray-700"></div>
+              <div className="relative px-4 bg-gray-900 text-gray-500 text-sm">OR</div>
             </div>
             
             <button 
               type="button" 
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full py-3 bg-transparent text-white rounded-lg font-medium transition-all duration-300 hover:bg-white/5 flex items-center justify-center border border-[#6320dd]/50 hover:border-[#b69fff]/50 relative overflow-hidden"
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg border border-gray-700 transition duration-200"
             >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
                   fill="#EA4335"
                   d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"
@@ -576,232 +483,45 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
             </button>
           </form>
           
-          <div className="mt-6 text-center">
-            <p className="text-[#b69fff] mb-3">
+          <div className="mt-8 text-center">
+            <p className="text-gray-400">
               {isLogin ? "Don't have an account?" : "Already have an account?"}
+              <button
+                type="button"
+                onClick={() => {
+                  console.log(`Switching to ${isLogin ? 'registration' : 'login'} view`);
+                  if (isLogin) {
+                    window.location.href = "/register.html";
+                  } else {
+                    window.location.href = "/";
+                  }
+                }}
+                className="ml-2 text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+              >
+                {isLogin ? "Sign Up" : "Sign In"}
+              </button>
             </p>
-            
-            {/* DIRECT HTML REGISTRATION BUTTON */}
-            {isLogin && (
-              <div>
-                <button
-                  id="createAccountButton"
-                  type="button"
-                  style={{
-                    width: "100%", 
-                    padding: "12px 24px",
-                    background: "#6320dd",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontWeight: "bold",
-                    cursor: "pointer !important",
-                    fontSize: "16px",
-                    pointerEvents: "auto"
-                  }}
-                >
-                  Create New Account
-                </button>
-                {/* Direct script execution for guaranteed click handler */}
-                <script dangerouslySetInnerHTML={{__html: `
-                  (function() {
-                    try {
-                      var btn = document.getElementById('createAccountButton');
-                      if (btn) {
-                        btn.onclick = function(e) {
-                          console.log('Create account button clicked via direct DOM');
-                          window.location.href = '/register';
-                          return false;
-                        };
-                        console.log('Successfully attached click handler to create account button');
-                      } else {
-                        console.error('Could not find create account button');
-                      }
-                    } catch(e) {
-                      console.error('Error attaching click handler:', e);
-                    }
-                  })();
-                `}} />
-              </div>
-            )}
-            
-            {/* DIRECT HTML LOGIN BUTTON */}
-            {!isLogin && (
-              <div>
-                <button
-                  id="backToLoginButton"
-                  type="button"
-                  style={{
-                    width: "100%", 
-                    padding: "12px 24px",
-                    background: "#4c1d95",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontWeight: "bold",
-                    cursor: "pointer !important",
-                    fontSize: "16px",
-                    pointerEvents: "auto"
-                  }}
-                >
-                  Back to Login
-                </button>
-                {/* Direct script execution for guaranteed click handler */}
-                <script dangerouslySetInnerHTML={{__html: `
-                  (function() {
-                    try {
-                      var btn = document.getElementById('backToLoginButton');
-                      if (btn) {
-                        btn.onclick = function(e) {
-                          console.log('Back to login button clicked via direct DOM');
-                          window.location.href = '/login';
-                          return false;
-                        };
-                        console.log('Successfully attached click handler to back to login button');
-                      } else {
-                        console.error('Could not find back to login button');
-                      }
-                    } catch(e) {
-                      console.error('Error attaching click handler:', e);
-                    }
-                  })();
-                `}} />
-              </div>
-            )}
           </div>
           
-          {/* Glowing corners */}
-          <div className="absolute w-[10px] h-[10px] top-0 left-0 border-t-2 border-l-2 border-[#6320dd] animate-pulse"></div>
-          <div className="absolute w-[10px] h-[10px] top-0 right-0 border-t-2 border-r-2 border-[#6320dd] animate-pulse"></div>
-          <div className="absolute w-[10px] h-[10px] bottom-0 left-0 border-b-2 border-l-2 border-[#6320dd] animate-pulse"></div>
-          <div className="absolute w-[10px] h-[10px] bottom-0 right-0 border-b-2 border-r-2 border-[#6320dd] animate-pulse"></div>
+          {/* Mobile footer */}
+          <div className="mt-12 text-center block md:hidden">
+            <p className="text-gray-500 text-sm">
+              © {new Date().getFullYear()} Logic Length Games
+            </p>
+          </div>
         </div>
-        
-        {/* Connection status indicator - Shows when retrying connection */}
-        {error && error.includes("Connection attempt") && (
-          <div className="mt-4 text-center text-sm text-[#b69fff] bg-[#1a0050]/50 p-2 rounded-lg border border-[#6320dd]/30 animate-pulse">
-            <div className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#8b5cf6]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Attempting to reach server... Please wait
-            </div>
-          </div>
-        )}
-        
-        {/* Add retry button when there are connection issues */}
-        {!connection.isConnected && !error.includes("Connection attempt") && (
-          <div className="mt-4 text-center">
-            <button 
-              onClick={() => {
-                connection.retryConnection();
-                setError("Checking connection... Please wait.");
-              }}
-              className="bg-[#4e1ebb] hover:bg-[#6320dd] text-white py-2 px-4 rounded-lg text-sm transition-colors"
-            >
-              Check Connection
-            </button>
-          </div>
-        )}
       </div>
       
-      {/* Credit text */}
-      <div className="absolute bottom-4 text-center w-full text-xs text-[#b69fff]/50">
-        <p>Made with ❤️ by LogicLength • © {new Date().getFullYear()}</p>
-      </div>
-      
-      {/* CSS for animations */}
-      <style jsx>{`
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 10px 0px rgba(99, 32, 221, 0.3); }
-          50% { box-shadow: 0 0 20px 5px rgba(99, 32, 221, 0.5); }
-        }
-        
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-10px) rotate(2deg); }
-        }
-        
-        @keyframes shimmer {
-          0% { transform: translateX(-100%) skewX(-12deg); }
-          100% { transform: translateX(200%) skewX(-12deg); }
-        }
-        
-        @keyframes slide-right {
-          0% { transform: translateX(-100%) rotate(-45deg); }
-          100% { transform: translateX(200%) rotate(-45deg); }
-        }
-        
-        @keyframes particle-float {
-          0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
-          25% { opacity: 1; }
-          50% { transform: translateY(-100px) translateX(100px); opacity: 0.5; }
-          75% { opacity: 0.2; }
-          100% { transform: translateY(-200px) translateX(200px); opacity: 0; }
-        }
-        
-        .animate-glow {
-          animation: glow 3s ease-in-out infinite;
-        }
-        
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        
-        .animate-shimmer {
-          animation: shimmer 2s infinite;
-        }
-        
-        .animate-slide-right {
-          animation: slide-right 3s infinite;
-        }
-        
-        .super-neon {
-          text-shadow: 0 0 5px rgba(99, 32, 221, 0.5), 0 0 10px rgba(99, 32, 221, 0.3);
-        }
-        
-        .futuristic-border {
-          border: 1px solid rgba(99, 32, 221, 0.3);
-          box-shadow: 0 0 15px rgba(99, 32, 221, 0.3), inset 0 0 10px rgba(99, 32, 221, 0.1);
-        }
-        
-        .perspective-container {
-          perspective: 1000px;
-        }
-        
-        .perspective-element {
-          transform-style: preserve-3d;
-        }
-        
-        .particle-elem {
-          position: absolute;
-          background-color: rgba(99, 32, 221, 0.5);
-          border-radius: 50%;
-          animation: particle-float linear infinite;
-        }
-        
-        .particles-bg {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-        }
-        
-        .loading-dots::after {
-          content: '...';
-          display: inline-block;
-          animation: dotAnimation 1.5s infinite;
-          width: 24px;
-          text-align: left;
-        }
-        
-        @keyframes dotAnimation {
-          0% { content: '.'; }
-          33% { content: '..'; }
-          66% { content: '...'; }
-          100% { content: '.'; }
-        }
-      `}</style>
+      {/* Connection status indicator */}
+      {error && error.includes("Connection attempt") && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-indigo-900/80 text-indigo-200 text-sm rounded-lg border border-indigo-700/50 flex items-center">
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Attempting to reach server... Please wait
+        </div>
+      )}
     </div>
   );
 };

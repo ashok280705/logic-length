@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account | Logic Length</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6a1cc3;
+            --primary-light: #9c4dff;
+            --primary-dark: #4b0082;
+            --accent: #ff7b00;
+            --text: #ffffff;
+            --background: #0a001a;
+            --card-bg: rgba(230, 230, 255, 0.95);
+            --card-border: rgba(156, 77, 255, 0.3);
+            --input-bg: rgba(255, 255, 255, 0.85);
+            --button-bg: #6a1cc3;
+            --button-hover: #8a2be2;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Exo 2', sans-serif;
+        }
+        
+        body {
+            background: var(--background);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Background effects */
+        .bg-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(to right, rgba(156, 77, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(156, 77, 255, 0.1) 1px, transparent 1px);
+            background-size: 35px 35px;
+            z-index: -2;
+        }
+        
+        .bg-glow {
+            position: absolute;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(156, 77, 255, 0.4) 0%, rgba(10, 0, 26, 0) 70%);
+            z-index: -1;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.7;
+            animation: pulse 8s infinite ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.5; }
+        }
+        
+        /* Floating particles */
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: var(--primary-light);
+            opacity: 0.4;
+            animation-name: float-up;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+        }
+        
+        @keyframes float-up {
+            0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+            10% { opacity: 0.4; }
+            90% { opacity: 0.2; }
+            100% { transform: translateY(-20vh) translateX(20px); opacity: 0; }
+        }
+        
+        /* Main card */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            max-width: 460px;
+            width: 90%;
+            padding: 40px 30px;
+            box-shadow: 
+                0 10px 25px rgba(10, 0, 26, 0.3),
+                0 0 0 1px var(--card-border),
+                0 0 0 4px rgba(156, 77, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            animation: card-appear 0.8s ease-out forwards;
+        }
+        
+        @keyframes card-appear {
+            0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
+        /* Card glow effect */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            background: linear-gradient(
+                45deg, 
+                transparent 20%, 
+                rgba(156, 77, 255, 0.1) 40%, 
+                rgba(156, 77, 255, 0.2) 50%, 
+                rgba(156, 77, 255, 0.1) 60%, 
+                transparent 80%
+            );
+            z-index: -1;
+            animation: border-glow 10s infinite linear;
+        }
+        
+        @keyframes border-glow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Card corner accents */
+        .corner {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            z-index: 2;
+        }
+        
+        .corner-top-left {
+            top: 0;
+            left: 0;
+            border-top: 2px solid var(--primary);
+            border-left: 2px solid var(--primary);
+            border-top-left-radius: 4px;
+        }
+        
+        .corner-top-right {
+            top: 0;
+            right: 0;
+            border-top: 2px solid var(--primary);
+            border-right: 2px solid var(--primary);
+            border-top-right-radius: 4px;
+        }
+        
+        .corner-bottom-left {
+            bottom: 0;
+            left: 0;
+            border-bottom: 2px solid var(--primary);
+            border-left: 2px solid var(--primary);
+            border-bottom-left-radius: 4px;
+        }
+        
+        .corner-bottom-right {
+            bottom: 0;
+            right: 0;
+            border-bottom: 2px solid var(--primary);
+            border-right: 2px solid var(--primary);
+            border-bottom-right-radius: 4px;
+        }
+        
+        /* Logo and headings */
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .logo {
+            max-width: 90px;
+            height: auto;
+            filter: drop-shadow(0 0 5px rgba(156, 77, 255, 0.3));
+            animation: logo-float 6s ease-in-out infinite;
+        }
+        
+        @keyframes logo-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        h1 {
+            color: var(--primary);
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin: 15px 0 8px;
+            text-align: center;
+            letter-spacing: 0.5px;
+            background: linear-gradient(to right, var(--primary-dark), var(--primary), var(--primary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
+        }
+        
+        .subtitle {
+            color: var(--primary-dark);
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+        
+        /* Form styles */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .input-group {
+            position: relative;
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary-dark);
+            opacity: 0.6;
+            transition: all 0.3s;
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px 14px 14px 45px;
+            border-radius: 10px;
+            border: 1px solid rgba(107, 28, 195, 0.2);
+            background-color: var(--input-bg);
+            font-size: 1rem;
+            transition: all 0.3s;
+            color: #333;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(156, 77, 255, 0.2);
+        }
+        
+        input:focus + .input-icon {
+            color: var(--primary);
+            opacity: 1;
+        }
+        
+        input::placeholder {
+            color: #9e9e9e;
+        }
+        
+        /* Button styles */
+        .btn {
+            padding: 14px 20px;
+            background: var(--button-bg);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(107, 28, 195, 0.3);
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to right,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transition: left 0.7s;
+        }
+        
+        .btn:hover {
+            background: var(--button-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(107, 28, 195, 0.4);
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(107, 28, 195, 0.3);
+        }
+        
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 25px 0;
+            color: var(--primary-dark);
+            font-weight: 500;
+        }
+        
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background-color: rgba(107, 28, 195, 0.2);
+        }
+        
+        .divider span {
+            padding: 0 15px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        /* Google button */
+        .google-btn {
+            padding: 13px 20px;
+            background-color: white;
+            border: 1px solid rgba(107, 28, 195, 0.2);
+            border-radius: 10px;
+            color: #333;
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .google-btn:hover {
+            background-color: #f8f8f8;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .google-icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        /* Login link */
+        .login-link {
+            margin-top: 25px;
+            text-align: center;
+            color: var(--primary-dark);
+            opacity: 0.8;
+            font-size: 0.95rem;
+        }
+        
+        .login-link a {
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .login-link a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary);
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s ease;
+        }
+        
+        .login-link a:hover {
+            background-color: rgba(156, 77, 255, 0.1);
+        }
+        
+        .login-link a:hover::after {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .btn.loading .spinner {
+            display: inline-block;
+        }
+        
+        /* Footer */
+        .footer {
+            position: absolute;
+            bottom: 15px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 0 20px;
+        }
+        
+        /* Error message */
+        .error-message {
+            background-color: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            color: #d32f2f;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .card {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .subtitle {
+                font-size: 0.95rem;
+            }
+            
+            input, .btn, .google-btn {
+                padding: 12px;
+            }
+        }
+        
+        /* MongoDB indicator styles */
+        .db-indicator {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(42, 33, 57, 0.8);
+            border-radius: 20px;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: white;
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(0, 237, 100, 0.3);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0.7;
+        }
+        
+        .db-indicator:hover {
+            opacity: 1;
+            background: rgba(42, 33, 57, 0.95);
+        }
+        
+        .db-indicator.expanded {
+            border-radius: 10px;
+            padding: 10px;
+            background: rgba(42, 33, 57, 0.95);
+            opacity: 1;
+        }
+        
+        .db-details {
+            margin-top: 5px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .db-indicator span {
+            white-space: nowrap;
+        }
+        
+        @media (max-width: 600px) {
+            .db-indicator span {
+                display: none;
+            }
+            
+            .db-indicator.expanded span {
+                display: inline;
+            }
+        }
+        
+        /* MongoDB diagnostics styling */
+        .mongodb-details {
+            background: rgba(0, 237, 100, 0.1);
+            border: 1px solid rgba(0, 237, 100, 0.2);
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+        
+        .mongo-detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+        }
+        
+        .mongo-detail-item span:first-child {
+            font-weight: bold;
+            color: #00ED64;
+        }
+        
+        .diagnostics-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .diagnostics-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border-top: 4px solid #00ED64;
+        }
+        
+        .diagnostics-content h3 {
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        
+        .diagnostic-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 6px;
+            background: #f5f5f5;
+        }
+        
+        .diagnostic-item.success {
+            background-color: rgba(0, 237, 100, 0.1);
+        }
+        
+        .diagnostic-item.error {
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+        
+        .diagnostic-item.warning {
+            background-color: rgba(255, 152, 0, 0.1);
+        }
+        
+        .diagnostic-label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .diagnostics-loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        
+        .diagnostic-recommendation {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            background: #f0f8ff;
+            border-left: 3px solid #4a90e2;
+        }
+        
+        .diagnostic-recommendation ul {
+            margin-top: 8px;
+            padding-left: 20px;
+        }
+        
+        .diagnostic-recommendation li {
+            margin-bottom: 5px;
+        }
+        
+        .close-diagnostics {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background: #6a1cc3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .close-diagnostics:hover {
+            background: #8a2be2;
+        }
+        
+        /* Help button */
+        .help-button {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .help-button:hover {
+            transform: scale(1.1);
+            background: var(--primary-light);
+        }
+        
+        /* Advanced server troubleshooting styles */
+        .troubleshoot-results {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            z-index: 10000;
+        }
+        
+        .troubleshoot-results h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .progress {
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .test-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        
+        .test-row.success {
+            border-left: 4px solid #00c853;
+        }
+        
+        .test-row.error {
+            border-left: 4px solid #f44336;
+        }
+        
+        .test-row.warning {
+            border-left: 4px solid #ff9800;
+        }
+        
+        .test-row.running {
+            border-left: 4px solid #2196f3;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .test-name {
+            font-weight: bold;
+            flex: 1;
+        }
+        
+        .test-status {
+            flex: 0 0 30px;
+            text-align: center;
+        }
+        
+        .test-details {
+            flex: 0 0 100%;
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .close-trouble {
+            margin-top: 20px;
+            padding: 8px 16px;
+            background: #6a11cb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .trouble-btn {
+            margin-left: 10px;
+            padding: 4px 8px;
+            background: #6200ee;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        /* Server found message */
+        .server-found-message {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 200, 83, 0.9);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        
+        .success-icon {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .success-text {
+            font-size: 14px;
+        }
+        
+        .reload-btn {
+            background: white;
+            color: #00c853;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            margin-left: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        
+        .reload-btn:hover {
+            background: #eee;
+            transform: scale(1.05);
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background elements -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+    
+    <!-- Particles -->
+    <div class="particles" id="particles-container"></div>
+    
+    <!-- Main Card -->
+    <div class="card">
+        <!-- Accent corners -->
+        <div class="corner corner-top-left"></div>
+        <div class="corner corner-top-right"></div>
+        <div class="corner corner-bottom-left"></div>
+        <div class="corner corner-bottom-right"></div>
+        
+        <!-- Logo and title -->
+        <div class="logo-container">
+            <img src="logo.png" alt="LogicLength Logo" class="logo">
+        </div>
+        <h1>Create Account</h1>
+        <p class="subtitle">Join our gaming community</p>
+        
+        <!-- Error message (hidden by default) -->
+        <div class="error-message" id="error-container">
+            <p id="error-message">Error message will appear here</p>
+        </div>
+        
+        <!-- Registration form -->
+        <form id="register-form">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    placeholder="Username" 
+                    required
+                >
+                <div class="input-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    placeholder="Email" 
+                    required
+                >
+                <div class="input-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="Password" 
+                    required
+                >
+                <div class="input-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn" id="submit-btn">
+                <div class="spinner" id="spinner"></div>
+                <span>Sign Up</span>
+            </button>
+        </form>
+        
+        <!-- Divider -->
+        <div class="divider">
+            <span>OR</span>
+        </div>
+        
+        <!-- Google Sign In -->
+        <button id="google-signin-btn" class="google-btn">
+            <svg class="google-icon" viewBox="0 0 24 24">
+                <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/>
+                <path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"/>
+                <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"/>
+                <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z"/>
+            </svg>
+            Continue with Google
+        </button>
+        
+        <!-- Login Link -->
+        <div class="login-link">
+            <p>Already have an account? <a href="/">Back to Login</a></p>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+        Made with ♥ by LogicLength • © <span id="current-year"></span>
+    </div>
+    
+    <script>
+        // Generate random floating particles
+        const particlesContainer = document.getElementById('particles-container');
+        
+        function createParticles() {
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                // Random size (smaller particles)
+                const size = Math.random() * 4 + 2;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // Random position
+                particle.style.left = `${Math.random() * 100}%`;
+                
+                // Random animation duration (longer for more graceful movement)
+                const duration = Math.random() * 20 + 20;
+                particle.style.animationDuration = `${duration}s`;
+                
+                // Random delay
+                const delay = Math.random() * 20;
+                particle.style.animationDelay = `${delay}s`;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+        
+        // Set current year in footer
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+        
+        // Create particles on page load
+        createParticles();
+        
+        // Form handling
+        const form = document.getElementById('register-form');
+        const submitButton = document.getElementById('submit-btn');
+        const spinner = document.getElementById('spinner');
+        const errorContainer = document.getElementById('error-container');
+        const errorMessage = document.getElementById('error-message');
+        const googleBtn = document.getElementById('google-signin-btn');
+        
+        // Network status tracking
+        let isOnline = navigator.onLine;
+        
+        // Update network status indicators
+        function updateNetworkStatus() {
+            isOnline = navigator.onLine;
+            if (!isOnline) {
+                showError("You are currently offline. Please check your internet connection.");
+            } else {
+                hideError();
+            }
+        }
+        
+        // Listen for online/offline events
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        
+        // Initial check
+        updateNetworkStatus();
+        
+        // Function to get server URL based on environment
+        function getServerUrl() {
+            // First check if we have a known working server from previous checks
+            const cachedWorkingServer = localStorage.getItem('workingServerUrl');
+            if (cachedWorkingServer) {
+                console.log('Using cached working server URL:', cachedWorkingServer);
+                return cachedWorkingServer;
+            }
+            
+            // For local development
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                return 'http://localhost:5002';
+            }
+            
+            // For test environments (GitHub Pages, Netlify previews, etc.)
+            if (window.location.hostname.includes('github.io') || 
+                window.location.hostname.includes('netlify.app')) {
+                return 'https://logic-length.onrender.com';
+            }
+            
+            // Try to use the same domain but different port for backend
+            try {
+                const currentOrigin = window.location.origin;
+                const domainParts = currentOrigin.split('.');
+                if (domainParts.length >= 2) {
+                    // Return a backend URL on the same domain
+                    return currentOrigin.replace(/:\d+$/, ''); // Remove port if present
+                }
+            } catch (e) {
+                console.error('Error parsing domain:', e);
+            }
+            
+            // Default production URL
+            return 'https://logic-length.onrender.com';
+        }
+        
+        /**
+         * Check if the user is online with a more thorough check
+         */
+        function checkOnlineStatus() {
+            // First check navigator.onLine (basic browser API)
+            const isOnline = navigator.onLine;
+            
+            if (!isOnline) {
+                return false;
+            }
+            
+            // Schedule a background server ping test
+            setTimeout(() => {
+                checkServerHealth().then(isHealthy => {
+                    if (!isHealthy) {
+                        showConnectionWarning();
+                    }
+                });
+            }, 500);
+            
+            return true;
+        }
+        
+        /**
+         * Check if server is healthy
+         */
+        async function checkServerHealth() {
+            try {
+                const serverUrl = getServerUrl();
+                const response = await enhancedFetch(`${serverUrl}/api/health`, {
+                    method: 'GET',
+                    timeout: 5000
+                }).catch(() => ({ status: 'error' }));
+                
+                console.log('Server health check:', response);
+                return response && response.status === 'ok';
+            } catch (error) {
+                console.warn('Server might be down:', error);
+                return false;
+            }
+        }
+        
+        /**
+         * Show connection warning with advanced troubleshooting option
+         */
+        function showConnectionWarning() {
+            // Remove existing warning if present
+            const existingWarning = document.querySelector('.connection-warning');
+            if (existingWarning) {
+                existingWarning.remove();
+            }
+            
+            const warningEl = document.createElement('div');
+            warningEl.className = 'connection-warning';
+            warningEl.innerHTML = `
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-message">
+                    You appear to be online, but our server might be unreachable. 
+                    <button id="diagnoseConnection" class="diagnostic-btn">Run diagnostics</button>
+                    <button id="advancedTroubleshoot" class="trouble-btn">Advanced troubleshooting</button>
+                </div>
+                <div class="close-warning">×</div>
+            `;
+            
+            document.body.appendChild(warningEl);
+            
+            // Add event listeners
+            warningEl.querySelector('.close-warning').addEventListener('click', () => {
+                warningEl.remove();
+            });
+            
+            warningEl.querySelector('#diagnoseConnection').addEventListener('click', runConnectionDiagnostics);
+            warningEl.querySelector('#advancedTroubleshoot').addEventListener('click', troubleshootServer);
+            
+            // Automatically try another server URL if primary fails
+            setTimeout(async () => {
+                // Try alternate server URLs
+                const alternateUrls = [
+                    'https://logic-length.onrender.com',
+                    'https://logic-length-api.onrender.com',
+                    'https://logic-length-backup.onrender.com'
+                ];
+                
+                for (const url of alternateUrls) {
+                    try {
+                        console.log(`Trying alternate server URL: ${url}`);
+                        const response = await enhancedFetch(`${url}/health`, {
+                            method: 'GET',
+                            timeout: 3000
+                        }).catch(() => null);
+                        
+                        if (response && response.status === 'ok') {
+                            console.log(`Found working server at ${url}`);
+                            // Store working URL in localStorage for future use
+                            localStorage.setItem('workingServerUrl', url);
+                            
+                            // Show success message
+                            const successMsg = document.createElement('div');
+                            successMsg.className = 'server-found-message';
+                            successMsg.innerHTML = `
+                                <div class="success-icon">✓</div>
+                                <div class="success-text">
+                                    Found working server! <button class="reload-btn">Reload to connect</button>
+                                </div>
+                            `;
+                            document.body.appendChild(successMsg);
+                            
+                            successMsg.querySelector('.reload-btn').addEventListener('click', () => {
+                                window.location.reload();
+                            });
+                            
+                            // Auto-hide after 10 seconds
+                            setTimeout(() => {
+                                successMsg.remove();
+                            }, 10000);
+                            
+                            break;
+                        }
+                    } catch (error) {
+                        console.log(`Failed to connect to ${url}:`, error);
+                    }
+                }
+            }, 2000);
+        }
+        
+        /**
+         * Run connection diagnostics with MongoDB info
+         */
+        function runConnectionDiagnostics() {
+            const diagnosticsEl = document.createElement('div');
+            diagnosticsEl.className = 'diagnostics-modal';
+            
+            // Set initial content with loading indicator
+            diagnosticsEl.innerHTML = `
+                <div class="diagnostics-content">
+                    <h3>Connection Diagnostics</h3>
+                    <div class="diagnostics-loading">Running checks...</div>
+                    <div class="diagnostics-results" style="display:none;"></div>
+                    <button class="close-diagnostics">Close</button>
+                </div>
+            `;
+            
+            document.body.appendChild(diagnosticsEl);
+            
+            // Close button event
+            diagnosticsEl.querySelector('.close-diagnostics').addEventListener('click', () => {
+                diagnosticsEl.remove();
+            });
+            
+            // Run actual diagnostics
+            setTimeout(async () => {
+                const resultsEl = diagnosticsEl.querySelector('.diagnostics-results');
+                const loadingEl = diagnosticsEl.querySelector('.diagnostics-loading');
+                
+                // Online status
+                const isOnline = navigator.onLine;
+                
+                // Browser info
+                const browserInfo = {
+                    userAgent: navigator.userAgent,
+                    vendor: navigator.vendor,
+                    platform: navigator.platform
+                };
+                
+                // Server health
+                const isServerHealthy = await checkServerHealth();
+                
+                // MongoDB connection status
+                let mongoStatus = { connected: false };
+                
+                if (isServerHealthy) {
+                    try {
+                        const serverUrl = getServerUrl();
+                        mongoStatus = await enhancedFetch(`${serverUrl}/api/db/status`, {
+                            method: 'GET',
+                            timeout: 5000
+                        }).catch(() => ({ connected: false }));
+                    } catch (error) {
+                        console.error('MongoDB status check failed:', error);
+                    }
+                }
+                
+                // Display results
+                resultsEl.innerHTML = `
+                    <div class="diagnostic-item ${isOnline ? 'success' : 'error'}">
+                        <span class="diagnostic-label">Online Status:</span> 
+                        <span class="diagnostic-value">${isOnline ? 'Online ✓' : 'Offline ✗'}</span>
+                    </div>
+                    
+                    <div class="diagnostic-item">
+                        <span class="diagnostic-label">Browser:</span> 
+                        <span class="diagnostic-value">${getBrowserInfo(browserInfo)}</span>
+                    </div>
+                    
+                    <div class="diagnostic-item ${isServerHealthy ? 'success' : 'error'}">
+                        <span class="diagnostic-label">Server Health:</span> 
+                        <span class="diagnostic-value">${isServerHealthy ? 'Server responding ✓' : 'Server unreachable ✗'}</span>
+                    </div>
+                    
+                    <div class="diagnostic-item ${mongoStatus.connected || mongoStatus.status === 'connected' ? 'success' : 'warning'}">
+                        <span class="diagnostic-label">MongoDB Atlas:</span> 
+                        <span class="diagnostic-value">${mongoStatus.connected || mongoStatus.status === 'connected' ? 
+                            'Connected ✓' : 'Not connected ⚠️'}</span>
+                    </div>
+                    
+                    ${mongoStatus.connected || mongoStatus.status === 'connected' ? `
+                    <div class="mongodb-details">
+                        <div class="mongo-detail-item">
+                            <span>Database:</span> ${mongoStatus.database || 'logic-length'}
+                        </div>
+                        <div class="mongo-detail-item">
+                            <span>Latency:</span> ${mongoStatus.latency || '~'}ms
+                        </div>
+                        <div class="mongo-detail-item">
+                            <span>Version:</span> ${mongoStatus.version || 'Unknown'}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="diagnostic-recommendation">
+                        ${getDiagnosticRecommendation(isOnline, isServerHealthy, mongoStatus)}
+                    </div>
+                `;
+                
+                // Hide loading, show results
+                loadingEl.style.display = 'none';
+                resultsEl.style.display = 'block';
+            }, 1000);
+        }
+        
+        /**
+         * Get user-friendly browser info
+         */
+        function getBrowserInfo(info) {
+            const ua = info.userAgent;
+            if (ua.includes('Chrome') && !ua.includes('Edg')) return 'Chrome';
+            if (ua.includes('Firefox')) return 'Firefox';
+            if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+            if (ua.includes('Edg')) return 'Edge';
+            if (ua.includes('MSIE') || ua.includes('Trident')) return 'Internet Explorer';
+            return 'Unknown Browser';
+        }
+        
+        /**
+         * Get diagnostic recommendation based on checks including MongoDB status
+         */
+        function getDiagnosticRecommendation(isOnline, isServerHealthy, mongoStatus) {
+            if (!isOnline) {
+                return `
+                    <strong>Recommendation:</strong> You are offline. Please check your internet connection and try again.
+                    <ul>
+                        <li>Check your Wi-Fi or mobile data connection</li>
+                        <li>Try connecting to a different network</li>
+                        <li>Restart your router if possible</li>
+                    </ul>
+                `;
+            }
+            
+            if (!isServerHealthy) {
+                return `
+                    <strong>Recommendation:</strong> Our server appears to be unreachable.
+                    <ul>
+                        <li>This could be a temporary issue - please try again in a few minutes</li>
+                        <li>Check if any network firewall is blocking access</li>
+                        <li>If the problem persists, our servers might be experiencing downtime</li>
+                    </ul>
+                `;
+            }
+            
+            if (!mongoStatus.connected && !mongoStatus.status === 'connected') {
+                return `
+                    <strong>Recommendation:</strong> Our MongoDB Atlas database appears to be unreachable.
+                    <ul>
+                        <li>This is likely a server-side issue with our database connection</li>
+                        <li>Please try again in a few minutes</li>
+                        <li>If the problem persists, please contact support</li>
+                    </ul>
+                `;
+            }
+            
+            return `
+                <strong>Recommendation:</strong> Your connection to our MongoDB Atlas database appears to be working correctly.
+                If you're still experiencing issues, try:
+                <ul>
+                    <li>Clearing your browser cache</li>
+                    <li>Using a different browser</li>
+                    <li>Disabling any privacy extensions that might block database connections</li>
+                </ul>
+            `;
+        }
+        
+        // Check server health and MongoDB connection on page load
+        window.addEventListener('load', () => {
+            checkServerHealth().then(isHealthy => {
+                if (!isHealthy) {
+                    showConnectionWarning();
+                } else {
+                    // If server is healthy, check MongoDB connection
+                    checkDatabaseConnection();
+                }
+            });
+        });
+        
+        // Add help button for users experiencing connection issues
+        const helpButton = document.createElement('button');
+        helpButton.className = 'help-button';
+        helpButton.innerHTML = '?';
+        helpButton.title = 'Connection help';
+        helpButton.addEventListener('click', runConnectionDiagnostics);
+        document.body.appendChild(helpButton);
+        
+        // Listen for browser back button to clear error messages
+        window.addEventListener('popstate', () => {
+            hideError();
+        });
+        
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorContainer.style.display = 'block';
+            // Scroll to error
+            errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        // Hide error message
+        function hideError() {
+            errorContainer.style.display = 'none';
+        }
+        
+        // Set loading state
+        function setLoading(isLoading) {
+            if (isLoading) {
+                submitButton.classList.add('loading');
+                spinner.style.display = 'inline-block';
+                submitButton.querySelector('span').textContent = 'Processing...';
+                submitButton.disabled = true;
+            } else {
+                submitButton.classList.remove('loading');
+                spinner.style.display = 'none';
+                submitButton.querySelector('span').textContent = 'Sign Up';
+                submitButton.disabled = false;
+            }
+        }
+        
+        /**
+         * Enhanced fetch with timeout and better error handling
+         */
+        async function enhancedFetch(url, options = {}) {
+            // Set defaults
+            const timeout = options.timeout || 10000;
+            const maxRetries = options.maxRetries || 2;
+            let retryCount = 0;
+            let lastError = null;
+            
+            // Base options
+            const fetchOptions = {
+                method: options.method || 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {})
+                },
+                mode: 'cors',
+                credentials: 'include',
+                ...options
+            };
+            
+            // Delete custom options that aren't part of the Fetch API
+            delete fetchOptions.timeout;
+            delete fetchOptions.maxRetries;
+            
+            // Retry loop
+            while (retryCount <= maxRetries) {
+                try {
+                    // Create abort controller for timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), timeout);
+                    
+                    fetchOptions.signal = controller.signal;
+                    
+                    // Attempt fetch
+                    const response = await fetch(url, fetchOptions);
+                    clearTimeout(timeoutId);
+                    
+                    // Handle HTTP errors
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        let errorData;
+                        
+                        try {
+                            errorData = JSON.parse(errorText);
+                        } catch (e) {
+                            errorData = { message: errorText || `HTTP error ${response.status}` };
+                        }
+                        
+                        const error = new Error(errorData.message || `HTTP error ${response.status}`);
+                        error.status = response.status;
+                        error.statusText = response.statusText;
+                        error.data = errorData;
+                        throw error;
+                    }
+                    
+                    // Return JSON or text based on content type
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return await response.json();
+                    } else {
+                        return await response.text();
+                    }
+                } catch (error) {
+                    lastError = error;
+                    
+                    // Don't retry certain errors
+                    const isAborted = error.name === 'AbortError';
+                    const isBadRequest = error.status === 400;
+                    const isAuthError = error.status === 401 || error.status === 403;
+                    const isNotFound = error.status === 404;
+                    const isConflict = error.status === 409;
+                    
+                    if (isAborted || isBadRequest || isAuthError || isNotFound || isConflict) {
+                        console.warn(`Not retrying fetch due to error type:`, error);
+                        throw error;
+                    }
+                    
+                    // If we've reached max retries, throw the last error
+                    if (retryCount >= maxRetries) {
+                        console.error(`Fetch failed after ${maxRetries} retries:`, error);
+                        throw error;
+                    }
+                    
+                    // Exponential backoff
+                    const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 10000);
+                    console.log(`Retry ${retryCount + 1}/${maxRetries} after ${backoffTime}ms`);
+                    await new Promise(resolve => setTimeout(resolve, backoffTime));
+                    
+                    retryCount++;
+                }
+            }
+            
+            // This shouldn't be reached due to the while loop condition,
+            // but include it for safety
+            throw lastError;
+        }
+        
+        // Handle registration with MongoDB Atlas integration
+        async function handleRegister(username, email, password) {
+            if (!checkOnlineStatus()) {
+                showError("You appear to be offline. Please check your internet connection and try again.");
+                return;
+            }
+            
+            setLoading(true);
+            
+            const serverUrl = getServerUrl();
+            const userData = { 
+                username, 
+                email, 
+                password,
+                createdAt: new Date().toISOString(),
+                lastLogin: new Date().toISOString(),
+                preferences: {
+                    theme: 'default',
+                    notifications: true
+                }
+            };
+            
+            let attempts = 0;
+            const maxAttempts = 3;
+            const backoffTime = 1000; // Start with 1 second
+            
+            while (attempts < maxAttempts) {
+                try {
+                    attempts++;
+                    const response = await enhancedFetch(`${serverUrl}/api/auth/register`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(userData),
+                        timeout: 10000 // 10 seconds timeout
+                    });
+                    
+                    // Log MongoDB operation id if available
+                    if (response.operationId) {
+                        console.log('MongoDB operation ID:', response.operationId);
+                    }
+                    
+                    // Registration successful
+                    console.log('MongoDB registration successful:', response);
+                    
+                    // Save user token if provided
+                    if (response.token) {
+                        localStorage.setItem('userToken', response.token);
+                    }
+                    
+                    // Show success message
+                    showSuccess('Registration successful! Your account has been created in our MongoDB database. You will be redirected to login page.');
+                    
+                    // Redirect to login after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                    
+                    return; // Exit the retry loop
+                    
+                } catch (error) {
+                    console.error(`MongoDB registration attempt ${attempts} failed:`, error);
+                    
+                    // Handle MongoDB specific errors
+                    if (error.status === 409 || (error.data && error.data.code === 11000)) {
+                        showError('This username or email already exists in our database. Please try another.');
+                        break; // Don't retry for duplicate key errors
+                    } else if (error.status === 400) {
+                        showError('Invalid information provided. Please check your details.');
+                        break; // Don't retry for validation errors
+                    } else if (error.status >= 500) {
+                        showError('Database server error. Our team has been notified. Please try again later.');
+                    } else if (error.message && error.message.includes('Failed to fetch')) {
+                        showError('Connection to database failed. Please check your internet and try again. If the problem persists, our database servers might be down.');
+                    } else {
+                        showError(`Registration failed: ${error.message || 'Unknown database error'}`);
+                    }
+                    
+                    // If we've exhausted our retry attempts
+                    if (attempts >= maxAttempts) {
+                        break; // Stop retrying
+                    }
+                    
+                    // If not the last attempt, wait before retrying
+                    const waitTime = backoffTime * Math.pow(2, attempts - 1); // Exponential backoff
+                    showError(`Database connection attempt ${attempts} failed. Retrying in ${waitTime/1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+            }
+            
+            setLoading(false);
+        }
+        
+        // Show a success message
+        function showSuccess(message) {
+            errorContainer.classList.remove('error');
+            errorContainer.classList.add('success');
+            errorMessage.textContent = message;
+            errorContainer.style.display = 'flex';
+        }
+        
+        // Form submission handler
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form data
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            // Basic validation
+            if (!username || username.length < 3) {
+                showError('Username must be at least 3 characters');
+                return;
+            }
+            
+            if (!email || !email.includes('@') || !email.includes('.')) {
+                showError('Please enter a valid email address');
+                return;
+            }
+            
+            if (!password || password.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+            
+            handleRegister(username, email, password);
+        });
+        
+        // Handle Google Sign-in
+        googleBtn.addEventListener('click', async function() {
+            if (!checkOnlineStatus()) {
+                showError("You appear to be offline. Please check your internet connection before using Google Sign-in.");
+                return;
+            }
+            
+            setLoading(true);
+            try {
+                // This is just a placeholder. In a real implementation,
+                // you would use the Google Sign-In API
+                showError("Google Sign-in is not implemented in this demo. Please use regular signup.");
+                submitButton.style.backgroundColor = '#f57c00';
+                submitButton.querySelector('span').textContent = 'Try Regular Signup';
+            } catch (error) {
+                console.error('Google sign-in error:', error);
+                showError('Google sign-in failed. Please try regular signup.');
+            } finally {
+                setLoading(false);
+            }
+        });
+        
+        // Input animations
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.classList.add('focused');
+            });
+            
+            input.addEventListener('blur', () => {
+                input.parentElement.classList.remove('focused');
+            });
+        });
+        
+        /**
+         * Check MongoDB Atlas connection status
+         */
+        async function checkDatabaseConnection() {
+            try {
+                const serverUrl = getServerUrl();
+                const response = await enhancedFetch(`${serverUrl}/api/db/status`, {
+                    method: 'GET',
+                    timeout: 5000
+                });
+                
+                console.log('MongoDB Atlas connection status:', response);
+                
+                // If we get a response with database info, show a subtle indicator
+                if (response && response.status === 'connected') {
+                    const dbIndicator = document.createElement('div');
+                    dbIndicator.className = 'db-indicator';
+                    dbIndicator.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 32 32">
+                            <path fill="#00ED64" d="M15.9.087l.854 1.604c.192.296.4.558.645.802a11.77 11.77 0 012.96 5.675c.143.915.2 1.851.192 2.79-.04 3.126-1.344 5.99-3.56 8.078a16.36 16.36 0 01-1.82 1.342 21.8 21.8 0 01-2.355 1.298c-.656.302-1.32.597-1.884.969-.45.293-.928.565-1.329.913a5.62 5.62 0 00-1.11 1.272c-.277.442-.487.915-.627 1.418a8.45 8.45 0 00-.3 1.916c-.011.358-.005.717-.012 1.078-.04.935-.193 1.848-.462 2.751-.59 1.898-1.5 3.375-3.578 3.97-.33.096-.675.177-1.02.14-.312-.033-.636-.117-.89-.308-.63-.477-.653-1.305-.05-1.832.32-.282.708-.444 1.083-.576 1.177-.413 2.123-1.16 2.81-2.247.378-.593.57-1.25.652-1.934.128-1.045.122-2.09.001-3.13a9.03 9.03 0 00-1.781-4.255c-.383-.489-.805-.95-1.261-1.395-1.1-1.072-2.287-2.013-3.387-3.046-.916-.863-1.68-1.858-2.21-3.02-.526-1.156-.854-2.365-.853-3.646.001-2.429.899-4.53 2.508-6.346 1.625-1.825 3.722-2.958 6.144-3.458.302-.062.604-.123.912-.146.406-.029.814-.032 1.22.009 1.38.146 2.548.833 3.463 1.894a6.33 6.33 0 011.51 3.307c.1.843.09 1.697.012 2.538-.127 1.36-.547 2.612-1.387 3.692-.914 1.173-2.052 2.032-3.503 2.518-.876.292-1.772.43-2.688.404-.436-.012-.87-.059-1.295-.148-1.212-.248-2.254-.833-3.098-1.725-.486-.519-.9-1.107-1.17-1.773-.303-.742-.34-1.497-.059-2.248.32-.846.85-1.511 1.536-2.075.832-.687 1.752-1.264 2.667-1.926.149-.11.303-.222.428-.36.39-.43.266-.98-.226-1.244-.428-.227-.866-.31-1.328-.308-.92.003-1.736.353-2.492.822-.923.572-1.578 1.39-2.075 2.33-.46.873-.7 1.796-.733 2.762-.082 2.333.85 4.258 2.585 5.856 1.596 1.474 3.504 2.277 5.64 2.55 2.208.28 4.372.07 6.488-.647 3.467-1.174 6.18-3.337 7.973-6.495 1.53-2.697 2.077-5.613 1.681-8.683a12.26 12.26 0 00-1.65-4.595c-.723-1.262-1.655-2.36-2.792-3.298-.954-.783-1.996-1.39-3.152-1.776C16.517.078 16.26.01 16 0h-.1z"/>
+                        </svg>
+                        <span>MongoDB Atlas Connected</span>
+                    `;
+                    document.body.appendChild(dbIndicator);
+                    
+                    // Add hover event to show more details
+                    dbIndicator.addEventListener('mouseenter', function() {
+                        this.classList.add('expanded');
+                        this.innerHTML += `
+                            <div class="db-details">
+                                <p>Database: ${response.database || 'logic-length'}</p>
+                                <p>Status: ${response.status}</p>
+                                <p>Latency: ${response.latency || '~'}ms</p>
+                            </div>
+                        `;
+                    });
+                    
+                    dbIndicator.addEventListener('mouseleave', function() {
+                        this.classList.remove('expanded');
+                        const details = this.querySelector('.db-details');
+                        if (details) details.remove();
+                    });
+                    
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.warn('MongoDB Atlas connection check failed:', error);
+                return false;
+            }
+        }
+        
+        /**
+         * Advanced server troubleshooting 
+         */
+        async function troubleshootServer() {
+            const serverUrl = getServerUrl();
+            const results = document.createElement('div');
+            results.className = 'troubleshoot-results';
+            results.innerHTML = `
+                <h3>Advanced Connection Troubleshooting</h3>
+                <p>Testing connection to server: ${serverUrl}</p>
+                <div class="progress"><div class="progress-bar"></div></div>
+                <div class="test-results"></div>
+                <button class="close-trouble">Close</button>
+            `;
+            document.body.appendChild(results);
+            
+            const progressBar = results.querySelector('.progress-bar');
+            const testResults = results.querySelector('.test-results');
+            
+            // Close button
+            results.querySelector('.close-trouble').addEventListener('click', () => {
+                results.remove();
+            });
+            
+            // Helper to add results
+            function addResult(test, status, details = '') {
+                const row = document.createElement('div');
+                row.className = `test-row ${status}`;
+                row.innerHTML = `
+                    <div class="test-name">${test}</div>
+                    <div class="test-status">${status === 'success' ? '✓' : status === 'warning' ? '⚠️' : '✗'}</div>
+                    ${details ? `<div class="test-details">${details}</div>` : ''}
+                `;
+                testResults.appendChild(row);
+                progressBar.style.width = `${(testResults.children.length / 6) * 100}%`;
+            }
+            
+            // Test 1: Basic connectivity
+            try {
+                addResult('Internet Connectivity', 'running', 'Testing basic connectivity...');
+                const online = navigator.onLine;
+                if (!online) {
+                    addResult('Internet Connectivity', 'error', 'Your device is offline. Please check your internet connection.');
+                } else {
+                    addResult('Internet Connectivity', 'success', 'Your device is online.');
+                }
+            } catch (e) {
+                addResult('Internet Connectivity', 'error', e.message);
+            }
+            
+            // Test 2: DNS resolution
+            try {
+                addResult('DNS Resolution', 'running', 'Testing DNS resolution...');
+                const urlObj = new URL(serverUrl);
+                const startTime = Date.now();
+                
+                // We can't directly test DNS in browser, so we make a HEAD request
+                const response = await fetch(`${serverUrl}/favicon.ico`, {
+                    method: 'HEAD',
+                    mode: 'no-cors', // This allows us to at least attempt the connection
+                    cache: 'no-cache',
+                    headers: { 'Cache-Control': 'no-cache' }
+                }).catch(error => ({ error }));
+                
+                const duration = Date.now() - startTime;
+                
+                if (response.error) {
+                    // Check if it's a DNS error
+                    if (response.error.message.includes('NetworkError') || 
+                        response.error.message.includes('Failed to fetch')) {
+                        addResult('DNS Resolution', 'error', 
+                            `Cannot resolve hostname: ${urlObj.hostname}. This may be a DNS or firewall issue.`);
+                    } else {
+                        addResult('DNS Resolution', 'warning', 
+                            `Hostname resolved but: ${response.error.message}`);
+                    }
+                } else {
+                    addResult('DNS Resolution', 'success', 
+                        `Hostname ${urlObj.hostname} resolved in ${duration}ms`);
+                }
+            } catch (e) {
+                addResult('DNS Resolution', 'error', e.message);
+            }
+            
+            // Test 3: API endpoint test with fallbacks
+            try {
+                addResult('API Endpoints', 'running', 'Testing various API endpoints...');
+                
+                // Try multiple endpoints
+                const endpoints = ['/health', '/api/health', '/api/auth/test'];
+                let anySuccess = false;
+                
+                for (const endpoint of endpoints) {
+                    try {
+                        const fullUrl = `${serverUrl}${endpoint}`;
+                        const response = await enhancedFetch(fullUrl, {
+                            method: 'GET',
+                            timeout: 5000,
+                            headers: { 'Cache-Control': 'no-cache' }
+                        }).catch(e => ({ error: e }));
+                        
+                        if (!response.error && response.status === 'ok') {
+                            addResult(`Endpoint ${endpoint}`, 'success', 
+                                `Successfully connected to ${endpoint}`);
+                            anySuccess = true;
+                            break; // Stop after first success
+                        } else {
+                            const errMsg = response.error ? response.error.message : 'Unknown error';
+                            console.log(`Endpoint ${endpoint} failed:`, errMsg);
+                        }
+                    } catch (epError) {
+                        console.log(`Endpoint ${endpoint} error:`, epError);
+                        // Continue to next endpoint
+                    }
+                }
+                
+                if (!anySuccess) {
+                    addResult('API Endpoints', 'error', 
+                        `Failed to connect to any API endpoints. Server may be down or unreachable.`);
+                } else {
+                    addResult('API Endpoints', 'success', 
+                        `Successfully connected to at least one API endpoint.`);
+                }
+            } catch (e) {
+                addResult('API Endpoints', 'error', e.message);
+            }
+            
+            // Test 4: CORS check
+            try {
+                addResult('CORS Configuration', 'running', 'Testing CORS configuration...');
+                
+                const testUrl = `${serverUrl}/api/auth/test`;
+                const corsResult = await fetch(testUrl, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'GET'
+                    }
+                }).catch(e => ({ error: e }));
+                
+                if (corsResult.error) {
+                    if (corsResult.error.message.includes('CORS')) {
+                        addResult('CORS Configuration', 'error', 
+                            `CORS is not properly configured on the server for this origin (${window.location.origin}).`);
+                    } else {
+                        addResult('CORS Configuration', 'warning', 
+                            `Could not test CORS: ${corsResult.error.message}`);
+                    }
+                } else {
+                    const corsHeaders = corsResult.headers && corsResult.headers.get('Access-Control-Allow-Origin');
+                    if (corsHeaders && (corsHeaders === '*' || corsHeaders.includes(window.location.origin))) {
+                        addResult('CORS Configuration', 'success', 
+                            `CORS is properly configured for this origin.`);
+                    } else {
+                        addResult('CORS Configuration', 'warning', 
+                            `CORS headers not detected. This might cause problems with API requests.`);
+                    }
+                }
+            } catch (e) {
+                addResult('CORS Configuration', 'error', e.message);
+            }
+            
+            // Test 5: Connection summary
+            const hasErrors = Array.from(testResults.querySelectorAll('.test-row.error')).length > 0;
+            const hasWarnings = Array.from(testResults.querySelectorAll('.test-row.warning')).length > 0;
+            
+            if (hasErrors) {
+                addResult('Overall Status', 'error', `
+                    <strong>Connection issues detected!</strong>
+                    <ul>
+                        <li>Check if the server is running at ${serverUrl}</li>
+                        <li>Check your network/firewall settings</li>
+                        <li>Try using a different network connection</li>
+                        <li>Contact support if the issue persists</li>
+                    </ul>
+                `);
+            } else if (hasWarnings) {
+                addResult('Overall Status', 'warning', `
+                    <strong>Connection may have some issues</strong>
+                    <ul>
+                        <li>The server appears to be reachable but there might be some configuration issues</li>
+                        <li>You may experience intermittent connectivity problems</li>
+                        <li>Try refreshing the page or using a different browser</li>
+                    </ul>
+                `);
+            } else {
+                addResult('Overall Status', 'success', `
+                    <strong>Connection appears to be working correctly</strong>
+                    <p>If you're still experiencing issues, they may be related to your user account or specific requests.</p>
+                `);
+            }
+            
+            // Add a button to the connection warning to run the troubleshooter
+            const warningEl = document.querySelector('.connection-warning');
+            if (warningEl) {
+                const troubleshootBtn = document.createElement('button');
+                troubleshootBtn.textContent = 'Run Advanced Troubleshooter';
+                troubleshootBtn.className = 'trouble-btn';
+                troubleshootBtn.addEventListener('click', troubleshootServer);
+                
+                const messageEl = warningEl.querySelector('.warning-message');
+                if (messageEl) {
+                    messageEl.appendChild(troubleshootBtn);
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

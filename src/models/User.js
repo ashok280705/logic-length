@@ -65,23 +65,47 @@ const userSchema = new mongoose.Schema({
       },
       type: {
         type: String,
-        required: true
+        required: true,
+        enum: ['purchase', 'spend', 'reward', 'refund'] // Restrict to valid transaction types
       },
       orderId: {
         type: String,
-        required: true
+        required: function() { return this.type === 'purchase' || this.type === 'refund'; }
       },
       paymentId: {
         type: String,
-        required: true
+        required: function() { return this.type === 'purchase' || this.type === 'refund'; }
+      },
+      description: {
+        type: String,
+        default: ''
       },
       date: {
         type: Date,
         default: Date.now,
-        required: true
+        required: true,
+        index: true // Add index for faster queries by date
       }
     }],
     default: [] // Initialize as empty array by default
+  },
+  preferences: {
+    theme: {
+      type: String,
+      default: 'default'
+    },
+    notifications: {
+      type: Boolean,
+      default: true
+    },
+    language: {
+      type: String,
+      default: 'en'
+    }
+  },
+  lastLogin: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true // Adds createdAt and updatedAt automatically

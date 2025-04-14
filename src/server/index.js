@@ -37,6 +37,7 @@ if (global.SocketIO) {
 import connectDB from '../config/db.js';
 import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
+import dbRoutes from './routes/db.js'; // Import the new database routes
 
 // Console log for debugging
 console.log('Server loaded, Socket.io Server available:', !!Server);
@@ -128,43 +129,47 @@ const io = new Server(server, {
       res.json({ message: 'Server is running!' });
     });
     
-    // Health check route
-    app.get('/health', (req, res) => {
-      const mongoose = require('mongoose');
-      res.json({ 
-        status: 'ok',
-        mongo: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-      });
+    // Health check route with MongoDB status
+    app.get('/health', async (req, res) => {
+      try {
+        const mongoose = (await import('mongoose')).default;
+        const isConnected = mongoose.connection.readyState === 1;
+        
+        // Perform a quick ping to MongoDB if connected
+        let dbPing = null;
+        if (isConnected) {
+          const startTime = Date.now();
+          try {
+            await mongoose.connection.db.admin().ping();
+            dbPing = Date.now() - startTime;
+          } catch (err) {
+            console.error('MongoDB ping failed:', err);
+          }
+        }
+        
+        res.json({ 
+          status: 'ok',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime(),
+          mongo: {
+            connected: isConnected,
+            readyState: mongoose.connection.readyState,
+            ping: dbPing,
+            host: isConnected ? mongoose.connection.host : null
+          }
+        });
+      } catch (error) {
+        console.error('Health check error:', error);
+        res.status(500).json({ 
+          status: 'error',
+          message: error.message 
+        });
+      }
     });
 
-    // Add dedicated API health check that can be used by the frontend
-    app.get('/api/health', (req, res) => {
-      const healthData = {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        environment: process.env.NODE_ENV || 'development',
-        version: process.env.npm_package_version || '1.0.0'
-      };
-      
-      try {
-        // Check MongoDB connection if available
-        const mongoose = require('mongoose');
-        healthData.database = {
-          connected: mongoose.connection.readyState === 1,
-          status: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState]
-        };
-      } catch (err) {
-        healthData.database = { connected: false, status: 'error', error: err.message };
-      }
-      
-      // Add CORS headers explicitly for this endpoint
-      res.header('Access-Control-Allow-Origin', '*');
-      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-      res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
-      
-      // Return health data
-      res.json(healthData);
+    // API health check
+    app.get('/api/health', async (req, res) => {
+      res.json({ status: 'ok', service: 'logic-length-api' });
     });
 
     // Add a specific auth test endpoint for health checks
@@ -175,6 +180,7 @@ const io = new Server(server, {
     // Routes - only add after DB connection is established
     app.use('/api/auth', authRoutes);
     app.use('/api/payment', paymentRoutes);
+    app.use('/api/db', dbRoutes); // Add the database routes
     
     // Log all incoming requests for debugging
     app.use((req, res, next) => {

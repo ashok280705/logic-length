@@ -3,9 +3,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// MongoDB Atlas connection string - you will need to replace this with your own
+// MongoDB Atlas connection string from .env
 // Format: mongodb+srv://<username>:<password>@<cluster-url>/<database-name>?retryWrites=true&w=majority
-const defaultMongoURI = 'mongodb+srv://USERNAME:PASSWORD@cluster0.mongodb.net/logiclength?retryWrites=true&w=majority';
+const defaultMongoURI = 'mongodb+srv://anujmayekar001:cGFcVsaYqhSlkYpR@cluster0.q8tufbn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
 const connectDB = async () => {
   // Common mongoose options for cloud deployment
@@ -61,6 +61,62 @@ const connectDB = async () => {
   }
 };
 
+// Function to optimize MongoDB for Atlas connection
+function setupIndexes() {
+  setTimeout(async () => {
+    try {
+      if (mongoose.connection.readyState !== 1) {
+        console.log('Cannot set up indexes, database not connected');
+        return;
+      }
+      
+      console.log('Creating optimal indexes for MongoDB Atlas...');
+      
+      // Import user model
+      const User = mongoose.model('User');
+      
+      // Verify existing indexes
+      const userIndexes = await User.collection.indexes();
+      console.log('Current User indexes:', userIndexes.map(idx => idx.name));
+      
+      // Create compound index on fields commonly queried together
+      if (!userIndexes.some(idx => idx.name === 'username_email_compound')) {
+        await User.collection.createIndex(
+          { username: 1, email: 1 },
+          { name: 'username_email_compound', background: true }
+        );
+        console.log('Created compound index on username and email');
+      }
+      
+      // Create index on frequently queried fields
+      if (!userIndexes.some(idx => idx.name === 'coins_level_index')) {
+        await User.collection.createIndex(
+          { coins: -1, level: -1 },
+          { name: 'coins_level_index', background: true }
+        );
+        console.log('Created index on coins and level');
+      }
+      
+      // Create text index for search functionality
+      if (!userIndexes.some(idx => idx.name === 'username_text')) {
+        await User.collection.createIndex(
+          { username: 'text' },
+          { 
+            name: 'username_text',
+            weights: { username: 10 },
+            background: true 
+          }
+        );
+        console.log('Created text index on username');
+      }
+      
+      console.log('MongoDB Atlas indexes setup complete');
+    } catch (error) {
+      console.error('Error setting up indexes:', error);
+    }
+  }, 5000); // Delay index creation to ensure models are loaded
+}
+
 // Setup MongoDB connection event listeners
 function setupEventListeners(mongoURI) {
   mongoose.connection.on('error', err => {
@@ -76,6 +132,11 @@ function setupEventListeners(mongoURI) {
     setTimeout(() => {
       mongoose.connect(mongoURI);
     }, 3000); // Try to reconnect after 3 seconds
+  });
+  
+  mongoose.connection.on('connected', () => {
+    console.log('MongoDB connected successfully');
+    setupIndexes();
   });
   
   process.on('SIGINT', async () => {
