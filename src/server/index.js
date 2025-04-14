@@ -47,7 +47,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow connections from any domain
+    origin: ['https://your-frontend-domain.com', 'http://localhost:5173', '*'], // Add your frontend domain here
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -58,7 +58,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: '*', // Allow connections from any domain
+  origin: ['https://your-frontend-domain.com', 'http://localhost:5173', '*'], // Add your frontend domain here
   credentials: true
 }));
 app.use(express.json());
