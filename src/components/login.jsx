@@ -506,30 +506,26 @@ const Login = ({ setUser }) => {
               {isLogin ? "Don't have an account?" : "Already have an account?"}
             </p>
             
-            <a 
-              href="#"
-              onClick={(e) => {
-                e.preventDefault(); // Prevent default anchor behavior
-                e.stopPropagation(); // Stop propagation
-                console.log("Toggle login/signup CLICKED");
-                
-                // Toggle form state
-                const newIsLogin = !isLogin;
-                console.log("Setting isLogin to:", newIsLogin);
-                setIsLogin(newIsLogin);
-                
-                // Reset form data appropriately
+            <button 
+              type="button"
+              onClick={() => {
+                // Direct function call with no preventDefault or event handling
+                console.log("TOGGLE BUTTON CLICKED - DIRECT FUNCTION CALL");
+                // Force toggle the state directly
+                setIsLogin(isLogin === true ? false : true);
+                // Clear error messages
                 setError("");
-                setFormData(prev => ({
-                  username: prev.username,
+                // Reset form
+                setFormData({
+                  username: "",
                   password: "",
-                  email: newIsLogin ? "" : prev.email
-                }));
+                  email: ""
+                });
               }}
-              className="inline-block px-6 py-2 bg-[#6320dd] text-white rounded-lg font-medium hover:bg-[#8b5cf6] focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-colors cursor-pointer select-none"
+              className="px-6 py-3 bg-purple-700 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors shadow-lg shadow-purple-900/30 hover:shadow-purple-900/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-purple-900"
             >
               {isLogin ? "Create New Account" : "Back to Login"}
-            </a>
+            </button>
           </div>
           
           {/* Glowing corners */}
