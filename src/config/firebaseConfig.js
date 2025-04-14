@@ -1,6 +1,6 @@
 // firebaseConfig.js
 
-import { getAuth, signInWithPopup, GoogleAuthProvider, initializeAuth, browserPopupRedirectResolver, connectAuthEmulator } from "firebase/auth";
+import { getAuth, signInWithPopup, GoogleAuthProvider, initializeAuth, browserPopupRedirectResolver } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 
 // Your Firebase configuration
@@ -14,12 +14,6 @@ const firebaseConfig = {
   measurementId: "G-9DEWLF5SRF"
 };
 
-// Get current hostname for domain validation
-const currentHostname = window.location.hostname;
-
-// PRODUCTION WORKAROUND: Use email/password auth directly on unauthorized domains
-const useDirectAuth = !isDomainAllowed() && currentHostname !== 'localhost' && !currentHostname.includes('127.0.0.1');
-
 // Initialize Firebase with a name to prevent duplicate apps
 let app;
 let auth;
@@ -32,14 +26,6 @@ try {
   auth = initializeAuth(app, {
     popupRedirectResolver: browserPopupRedirectResolver,
   });
-  
-  // Log the current hostname for debugging domain issues
-  console.log("Current hostname:", currentHostname);
-  
-  // WORKAROUND: For unauthorized domains, use a direct authentication option
-  if (useDirectAuth) {
-    console.log("Using direct auth method for unauthorized domain");
-  }
 } catch (error) {
   console.error("Firebase initialization error", error);
   // If already initialized, use the existing app
@@ -61,24 +47,6 @@ provider.setCustomParameters({
 export const signInWithGoogle = async () => {
   console.log("Starting Google Sign-In process...");
   
-  // WORKAROUND: For unauthorized domains, provide a fake Google user
-  if (useDirectAuth) {
-    console.log("Using direct auth instead of Google popup due to domain restrictions");
-    
-    // Create a temporary user object for testing
-    const tempUser = {
-      id: "temp-google-user-123",
-      username: "Demo User",
-      email: "demo@example.com",
-      photoURL: "https://ui-avatars.com/api/?name=Demo+User&background=random",
-      coins: 50,
-      level: 1,
-      xp: 0
-    };
-    
-    return tempUser;
-  }
-  
   try {
     const result = await signInWithPopup(auth, provider);
     
@@ -88,8 +56,6 @@ export const signInWithGoogle = async () => {
     const user = result.user;
     
     console.log("Google Sign-In successful for:", user.displayName);
-    console.log("User email:", user.email);
-    console.log("User ID:", user.uid);
     
     // Create a custom user object with needed fields
     const customUser = {
@@ -119,21 +85,9 @@ export const signInWithGoogle = async () => {
       case 'auth/internal-error':
         throw new Error("An internal error occurred. Please try again later.");
       case 'auth/unauthorized-domain':
-        console.error(`Domain ${currentHostname} is not authorized in Firebase.`);
         throw new Error("This website is not authorized for Google Sign-In. Please contact support and mention 'unauthorized domain'.");
       default:
         throw new Error(error.message || "Failed to sign in with Google. Please try again.");
     }
   }
-};
-
-// Debug function to test if domain is allowed
-export function isDomainAllowed() {
-  const validDomains = [
-    'localhost', 
-    '127.0.0.1',
-    'logic-length-frontend.onrender.com'
-  ];
-  
-  return validDomains.some(domain => currentHostname.includes(domain));
 };

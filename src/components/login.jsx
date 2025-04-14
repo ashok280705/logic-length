@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithGoogle, isDomainAllowed } from "../config/firebaseConfig";
+import { signInWithGoogle } from "../config/firebaseConfig";
 import axios from 'axios';
 
 const Login = ({ setUser }) => {
@@ -13,21 +13,10 @@ const Login = ({ setUser }) => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-  const [isDomainAuthorized, setIsDomainAuthorized] = useState(true);
   const navigate = useNavigate();
 
-  // Check domain authorization on component mount
+  // Page loading animation
   useEffect(() => {
-    // Check if current domain is in the allowed list
-    const domainAllowed = isDomainAllowed();
-    setIsDomainAuthorized(domainAllowed);
-    
-    console.log("Domain authorization check:", {
-      currentDomain: window.location.hostname,
-      isAuthorized: domainAllowed
-    });
-    
-    // Page loading animation
     const timer = setTimeout(() => {
       setPageLoading(false);
     }, 1500);
@@ -126,15 +115,6 @@ const Login = ({ setUser }) => {
       console.log("Google Sign-In successful, processing user data:", googleUser);
       
       try {
-        // If we're in workaround mode with a temporary user, skip the API call
-        if (googleUser.id === "temp-google-user-123") {
-          console.log("Using temporary user for testing on unauthorized domain");
-          localStorage.setItem("user", JSON.stringify(googleUser));
-          setUser(googleUser);
-          navigate("/home");
-          return;
-        }
-        
         const response = await axios.post('/api/auth/google-signin', {
           email: googleUser.email,
           displayName: googleUser.displayName,
@@ -267,15 +247,6 @@ const Login = ({ setUser }) => {
             {isLogin ? "Login to access your account" : "Join our gaming community"}
           </p>
           
-          {/* Domain unauthorized warning - changed to be less alarming */}
-          {!isDomainAuthorized && (
-            <div className="bg-amber-900/40 border border-amber-700 text-amber-100 px-4 py-3 rounded-lg mb-6">
-              <p className="text-sm">
-                You're using a temporary Google Sign-In mode. For proper functionality, please add this domain to your Firebase authorized domains.
-              </p>
-            </div>
-          )}
-          
           {/* Error message */}
           {error && (
             <div className="mb-6 p-3 bg-red-900/50 text-red-300 rounded-lg border border-red-500 animate-pulse relative overflow-hidden">
@@ -374,7 +345,7 @@ const Login = ({ setUser }) => {
               type="button" 
               onClick={handleGoogleSignIn}
               className="w-full py-3 bg-white text-[#4285F4] rounded-lg font-semibold transition-all duration-300 hover:bg-gray-100 hover:shadow-md hover:shadow-[#6320dd]/30 border border-gray-300 flex items-center justify-center relative overflow-hidden"
-              disabled={isLoading || !isDomainAuthorized}
+              disabled={isLoading}
             >
               <span className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center bg-white">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
