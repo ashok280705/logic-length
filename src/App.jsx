@@ -42,8 +42,24 @@ const App = () => {
 
   // Check if user has enough coins for a game
   const hasEnoughCoins = (gameType) => {
-    if (!userProfile) return false;
-    return (userProfile.balance || 0) >= GAME_COSTS[gameType];
+    // Get coin balance directly from localStorage
+    try {
+      // Get latest user data from localStorage
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return false;
+      
+      const userData = JSON.parse(userStr);
+      const currentCoins = parseInt(userData.coins) || 0;
+      const cost = GAME_COSTS[gameType] || 0;
+      
+      console.log(`Checking coin access - Game: ${gameType}, Cost: ${cost}, Available: ${currentCoins}`);
+      
+      // Return true if user has enough coins
+      return currentCoins >= cost;
+    } catch (e) {
+      console.error("Error checking coin balance:", e);
+      return false;
+    }
   };
 
   // Deduct coins when playing a game
@@ -282,11 +298,10 @@ const App = () => {
           path="/tictactoe" 
           element={
             currentUser ? (
-              hasEnoughCoins('tictactoe') ? (
+              <>
+                <Navbar />
                 <Game1 cost={GAME_COSTS.tictactoe} deductCoins={() => deductCoins('tictactoe')} />
-              ) : (
-                <Navigate to="/payment" />
-              )
+              </>
             ) : (
               <Navigate to="/login" />
             )
@@ -297,11 +312,10 @@ const App = () => {
           path="/chess" 
           element={
             currentUser ? (
-              hasEnoughCoins('chess') ? (
+              <>
+                <Navbar />
                 <Game3 cost={GAME_COSTS.chess} deductCoins={() => deductCoins('chess')} />
-              ) : (
-                <Navigate to="/payment" />
-              )
+              </>
             ) : (
               <Navigate to="/login" />
             )
@@ -312,11 +326,10 @@ const App = () => {
           path="/snakes" 
           element={
             currentUser ? (
-              hasEnoughCoins('snakes') ? (
+              <>
+                <Navbar />
                 <Game4 cost={GAME_COSTS.snakes} deductCoins={() => deductCoins('snakes')} />
-              ) : (
-                <Navigate to="/payment" />
-              )
+              </>
             ) : (
               <Navigate to="/login" />
             )
@@ -327,11 +340,10 @@ const App = () => {
           path="/rock-paper-scissors" 
           element={
             currentUser ? (
-              hasEnoughCoins('rock-paper-scissors') ? (
+              <>
+                <Navbar />
                 <Game5 cost={GAME_COSTS['rock-paper-scissors']} deductCoins={() => deductCoins('rock-paper-scissors')} />
-              ) : (
-                <Navigate to="/payment" />
-              )
+              </>
             ) : (
               <Navigate to="/login" />
             )
@@ -342,11 +354,10 @@ const App = () => {
           path="/mines-plinko" 
           element={
             currentUser ? (
-              hasEnoughCoins('mines-plinko') ? (
+              <>
+                <Navbar />
                 <Game6 cost={GAME_COSTS['mines-plinko']} deductCoins={() => deductCoins('mines-plinko')} />
-              ) : (
-                <Navigate to="/payment" />
-              )
+              </>
             ) : (
               <Navigate to="/login" />
             )
@@ -357,11 +368,10 @@ const App = () => {
           path="/snail-race" 
           element={
             currentUser ? (
-              hasEnoughCoins('snail-race') ? (
+              <>
+                <Navbar />
                 <Game7 cost={GAME_COSTS['snail-race']} deductCoins={() => deductCoins('snail-race')} />
-              ) : (
-                <Navigate to="/payment" />
-              )
+              </>
             ) : (
               <Navigate to="/login" />
             )
@@ -372,11 +382,10 @@ const App = () => {
           path="/aviator" 
           element={
             currentUser ? (
-              hasEnoughCoins('game8') ? (
+              <>
+                <Navbar />
                 <Game8 cost={GAME_COSTS.game8} deductCoins={() => deductCoins('game8')} />
-              ) : (
-                <Navigate to="/payment" />
-              )
+              </>
             ) : (
               <Navigate to="/login" />
             )
@@ -387,11 +396,13 @@ const App = () => {
           path="/multiplayer-tictactoe" 
           element={
             currentUser ? (
-              hasEnoughCoins('multiplayer-tictactoe') ? (
-                <MultiplayerTicTacToe cost={GAME_COSTS['multiplayer-tictactoe']} deductCoins={() => deductCoins('multiplayer-tictactoe')} />
-              ) : (
-                <Navigate to="/payment" />
-              )
+              <>
+                <Navbar />
+                <MultiplayerTicTacToe 
+                  cost={GAME_COSTS['multiplayer-tictactoe']} 
+                  deductCoins={() => deductCoins('multiplayer-tictactoe')} 
+                />
+              </>
             ) : (
               <Navigate to="/login" />
             )
