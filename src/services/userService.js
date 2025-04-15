@@ -1,17 +1,18 @@
-import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, addDoc, query, where, getDocs, setDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
+
+const USERS_COLLECTION = 'users';
 
 // Get user profile
 export const getUserProfile = async (userId) => {
   try {
-    const userDoc = await getDoc(doc(db, "users", userId));
+    const userDoc = await getDoc(doc(db, USERS_COLLECTION, userId));
     if (userDoc.exists()) {
-      return userDoc.data();
-    } else {
-      throw new Error("User not found");
+      return { id: userDoc.id, ...userDoc.data() };
     }
+    return null;
   } catch (error) {
-    console.error("Error getting user profile:", error);
+    console.error('Error getting user profile:', error);
     throw error;
   }
 };
@@ -91,13 +92,32 @@ export const getUserGameHistory = async (userId) => {
 };
 
 // Update user profile
-export const updateUserProfile = async (userId, profileData) => {
+export const updateUserProfile = async (userId, updates) => {
   try {
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, profileData);
-    return true;
+    const userRef = doc(db, USERS_COLLECTION, userId);
+    await updateDoc(userRef, {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
   } catch (error) {
-    console.error("Error updating user profile:", error);
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+};
+
+export const createUserProfile = async (userId, userData) => {
+  try {
+    await setDoc(doc(db, USERS_COLLECTION, userId), {
+      ...userData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      coins: 0,
+      friends: [],
+      friendRequests: [],
+      gameHistory: []
+    });
+  } catch (error) {
+    console.error('Error creating user profile:', error);
     throw error;
   }
 }; 
