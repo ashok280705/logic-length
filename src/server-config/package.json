@@ -6,12 +6,11 @@
   "dependencies": {
     "express": "^4.21.2",
     "socket.io": "^4.8.1",
-    "mongodb": "^6.15.0",
-    "mongoose": "^8.13.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express-session": "^1.18.1",
     "bcryptjs": "^2.4.3",
-    "razorpay": "^2.9.6"
+    "razorpay": "^2.9.6",
+    "firebase-admin": "^11.10.1"
   }
 } 

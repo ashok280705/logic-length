@@ -34,10 +34,9 @@ if (global.SocketIO) {
   }
 }
 
-import connectDB from '../config/db.js';
+// Import route modules but remove MongoDB dependency
 import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
-import dbRoutes from './routes/db.js'; // Import the new database routes
 
 // Console log for debugging
 console.log('Server loaded, Socket.io Server available:', !!Server);
@@ -67,175 +66,111 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true
   },
-  pingTimeout: 60000, // Increase ping timeout to 60 seconds (was 30000)
+  pingTimeout: 30000, // Increase ping timeout to 30 seconds
   pingInterval: 25000, // Ping clients every 25 seconds
   transports: ['websocket', 'polling'], // Support both transport methods
-  connectTimeout: 30000, // Increase connection timeout to 30 seconds (was 20000)
+  connectTimeout: 20000, // Increase connection timeout
   allowUpgrades: true, // Allow transport upgrades
   maxHttpBufferSize: 1e8, // Increase buffer size for larger payloads
   path: '/socket.io/', // Explicit path to avoid issues
-  reconnectionAttempts: 5, // Allow 5 reconnection attempts
-  reconnectionDelay: 1000, // Start with 1 second delay
-  reconnectionDelayMax: 10000, // Maximum 10 seconds between reconnection attempts
-  autoConnect: true,
-  forceNew: false,
 });
 
-// Modified initialization with async IIFE
+// Modified initialization with async IIFE - without MongoDB
 (async function startServer() {
-  let connectionAttempts = 0;
-  const maxConnectionAttempts = 5;
-  
-  async function attemptConnection() {
-    try {
-      connectionAttempts++;
-      // Connect to MongoDB first
-      console.log(`Connecting to MongoDB... (Attempt ${connectionAttempts}/${maxConnectionAttempts})`);
-      await connectDB();
-      console.log('MongoDB connection established successfully');
-      
-      // Check connection by performing a simple query
-      const mongoose = (await import('mongoose')).default;
-      if (!mongoose.connection.readyState) {
-        throw new Error('MongoDB connection not ready after connect');
-      }
-      
-      console.log('MongoDB connection verified and ready');
-      
-      // Now setup Express middleware after confirmed DB connection
-      setupExpress();
-      setupRoutes();
-      startListening();
-      setupSocketIO();
-      
-    } catch (error) {
-      console.error(`MongoDB connection attempt ${connectionAttempts} failed:`, error.message);
-      
-      if (connectionAttempts < maxConnectionAttempts) {
-        const retryDelay = connectionAttempts * 3000; // Increasing delay with each attempt
-        console.log(`Retrying in ${retryDelay/1000} seconds...`);
-        setTimeout(attemptConnection, retryDelay);
-      } else {
-        console.error('Max connection attempts reached. Server startup failed.');
-        process.exit(1);
-      }
-    }
-  }
-  
-  function setupExpress() {
-    app.use(cors({
-      origin: '*', // Allow all origins
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-      credentials: false
-    }));
-    app.use(express.json());
-    app.use(session({
-      secret: process.env.SESSION_SECRET || 'your-secret-key',
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-      }
-    }));
+  try {
+    console.log('Starting server with Firebase backend...');
     
-    // Add error handling middleware
-    app.use((err, req, res, next) => {
-      console.error('Express error:', err);
-      res.status(500).json({
-        message: 'Server error',
-        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
-      });
-    });
-  }
-  
-  function setupRoutes() {
-    // Test route
-    app.get('/', (req, res) => {
-      res.json({ message: 'Server is running!' });
-    });
+    // Setup Express
+    setupExpress();
+    setupRoutes();
+    startListening();
+    setupSocketIO();
     
-    // Health check route with MongoDB status
-    app.get('/health', async (req, res) => {
-      try {
-        const mongoose = (await import('mongoose')).default;
-        const isConnected = mongoose.connection.readyState === 1;
-        
-        // Perform a quick ping to MongoDB if connected
-        let dbPing = null;
-        if (isConnected) {
-          const startTime = Date.now();
-          try {
-            await mongoose.connection.db.admin().ping();
-            dbPing = Date.now() - startTime;
-          } catch (err) {
-            console.error('MongoDB ping failed:', err);
-          }
-        }
-        
-        res.json({ 
-          status: 'ok',
-          timestamp: new Date().toISOString(),
-          uptime: process.uptime(),
-          mongo: {
-            connected: isConnected,
-            readyState: mongoose.connection.readyState,
-            ping: dbPing,
-            host: isConnected ? mongoose.connection.host : null
-          }
-        });
-      } catch (error) {
-        console.error('Health check error:', error);
-        res.status(500).json({ 
-          status: 'error',
-          message: error.message 
-        });
-      }
-    });
-
-    // API health check
-    app.get('/api/health', async (req, res) => {
-      res.json({ status: 'ok', service: 'logic-length-api' });
-    });
-
-    // Add a specific auth test endpoint for health checks
-    app.get('/api/auth/test', (req, res) => {
-      res.json({ message: 'Auth endpoint is accessible' });
-    });
-
-    // Routes - only add after DB connection is established
-    app.use('/api/auth', authRoutes);
-    app.use('/api/payment', paymentRoutes);
-    app.use('/api/db', dbRoutes); // Add the database routes
-    
-    // Log all incoming requests for debugging
-    app.use((req, res, next) => {
-      console.log(`${req.method} ${req.url}`);
-      next();
-    });
-    
-    // 404 handler
-    app.use((req, res) => {
-      console.log(`404 Not Found: ${req.method} ${req.url}`);
-      res.status(404).json({ message: 'Route not found' });
-    });
+  } catch (error) {
+    console.error(`Server initialization error:`, error.message);
+    process.exit(1);
   }
-  
-  function startListening() {
-    // Start the server
-    const PORT = process.env.PORT || 5002;
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log('Socket.io listening for connections');
-    });
-  }
-  
-  // Begin the connection process
-  attemptConnection();
 })();
 
-// Extract socket.io setup to a separate function
+function setupExpress() {
+  app.use(cors({
+    origin: '*', // Allow all origins
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    credentials: false
+  }));
+  app.use(express.json());
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+  
+  // Add error handling middleware
+  app.use((err, req, res, next) => {
+    console.error('Express error:', err);
+    res.status(500).json({
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
+    });
+  });
+}
+
+function setupRoutes() {
+  // Test route
+  app.get('/', (req, res) => {
+    res.json({ message: 'Server is running!' });
+  });
+  
+  // Simple health check route without MongoDB dependency
+  app.get('/health', async (req, res) => {
+    res.json({ 
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      backend: 'Firebase'
+    });
+  });
+
+  // API health check
+  app.get('/api/health', async (req, res) => {
+    res.json({ status: 'ok', service: 'logic-length-api' });
+  });
+
+  // Add a specific auth test endpoint for health checks
+  app.get('/api/auth/test', (req, res) => {
+    res.json({ message: 'Auth endpoint is accessible' });
+  });
+
+  // Routes
+  app.use('/api/auth', authRoutes);
+  app.use('/api/payment', paymentRoutes);
+  
+  // Log all incoming requests for debugging
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+  });
+  
+  // 404 handler
+  app.use((req, res) => {
+    res.status(404).json({ message: 'Route not found' });
+  });
+}
+
+function startListening() {
+  const PORT = process.env.PORT || 5002;
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log('Socket.io listening for connections');
+  });
+}
+
+// Socket.io setup function
 function setupSocketIO() {
   // Socket.io connection and events
   const activeGames = new Map(); // Store active games by room ID
@@ -392,126 +327,110 @@ function setupSocketIO() {
   });
 }
 
-// Helper function to handle a player leaving a game
-function handlePlayerLeave(socket, roomId) {
+// Helper function for handlePlayerDisconnect
+function handlePlayerDisconnect(socketId) {
+  // Remove from waiting players if applicable
+  if (waitingPlayers.has(socketId)) {
+    waitingPlayers.delete(socketId);
+  }
+  
+  // Handle leaving any active games
+  for (const [roomId, game] of activeGames.entries()) {
+    if (game.players.some(p => p.socketId === socketId)) {
+      handlePlayerLeave(socketId, roomId);
+      break;
+    }
+  }
+}
+
+// Helper function for handling player leaving a game
+function handlePlayerLeave(socketId, roomId) {
   const game = activeGames.get(roomId);
   
   if (!game) return;
   
-  // Find the player who's leaving
-  const leavingPlayer = game.players.find(p => p.socketId === socket.id);
-  const stayingPlayer = game.players.find(p => p.socketId !== socket.id);
+  const leavingPlayer = game.players.find(p => p.socketId === socketId);
+  const remainingPlayer = game.players.find(p => p.socketId !== socketId);
   
-  if (leavingPlayer && stayingPlayer) {
-    // Notify the other player that their opponent left
-    io.to(stayingPlayer.socketId).emit('opponent_left', {
-      gameType: game.gameType,
-      winByDefault: true
-    });
-    
-    // Maybe update stats in the database here
-    
-    // Remove the game
-    activeGames.delete(roomId);
-  }
+  if (!leavingPlayer || !remainingPlayer) return;
+  
+  // Notify the remaining player
+  io.to(remainingPlayer.socketId).emit('opponent_left', {
+    winByDefault: true
+  });
+  
+  // Remove the game
+  activeGames.delete(roomId);
 }
 
-// Helper functions for game logic
+// Helper function to initialize game state
 function initializeGameState(gameType) {
-  switch (gameType) {
+  switch(gameType) {
     case 'tictactoe':
       return {
         board: Array(9).fill(null),
-        moves: 0
+        moveCount: 0
       };
-    case 'chess':
-      return {
-        // Initialize chess board state here
-        board: 'initial',
-        moves: []
-      };
-    case 'mines':
-      return {
-        // Initialize mines game here
-        board: Array(100).fill(false),
-        mines: []
-      };
+    // Add other game types as needed
     default:
       return {};
   }
 }
 
+// Process game move
 function processGameMove(gameType, state, move) {
-  // Clone state to avoid mutation
-  const newState = JSON.parse(JSON.stringify(state));
-  
-  switch (gameType) {
-    case 'tictactoe': {
-      // Handle tic-tac-toe move
-      const { position, symbol } = move;
-      if (newState.board[position] === null) {
-        newState.board[position] = symbol;
-        newState.moves++;
-      }
-      return newState;
-    }
-    case 'chess': {
-      // Handle chess move
-      newState.moves.push(move);
-      newState.board = 'updated'; // You would update the actual board state here
-      return newState;
-    }
-    case 'mines': {
-      // Handle mines game move
-      return newState;
-    }
+  switch(gameType) {
+    case 'tictactoe':
+      const newBoard = [...state.board];
+      newBoard[move.position] = move.symbol;
+      return {
+        ...state,
+        board: newBoard,
+        moveCount: state.moveCount + 1
+      };
     default:
       return state;
   }
 }
 
+// Check game result
 function checkGameResult(gameType, state) {
-  switch (gameType) {
-    case 'tictactoe': {
-      // Check for tic-tac-toe win or draw
-      const { board } = state;
-      
-      // Win patterns: rows, columns, diagonals
-      const lines = [
+  switch(gameType) {
+    case 'tictactoe':
+      // Check for win or draw in tic-tac-toe
+      const winPatterns = [
         [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
         [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
         [0, 4, 8], [2, 4, 6]             // diagonals
       ];
       
-      for (const line of lines) {
-        const [a, b, c] = line;
-        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      for (const pattern of winPatterns) {
+        const [a, b, c] = pattern;
+        if (state.board[a] && state.board[a] === state.board[b] && state.board[a] === state.board[c]) {
           return {
             gameOver: true,
-            winner: board[a],
-            winningLine: line
+            winner: state.board[a],
+            winningPattern: pattern
           };
         }
       }
       
       // Check for draw
-      if (state.moves === 9) {
+      if (state.moveCount === 9) {
         return {
           gameOver: true,
           draw: true
         };
       }
       
-      return { gameOver: false };
-    }
-    case 'chess':
-      // Implement chess win/draw detection
-      return { gameOver: false };
-    case 'mines':
-      // Implement mines game win/loss detection
-      return { gameOver: false };
+      // Game is still ongoing
+      return {
+        gameOver: false
+      };
     default:
-      return { gameOver: false };
+      return {
+        gameOver: false
+      };
   }
 }
 
