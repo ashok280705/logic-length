@@ -18,7 +18,7 @@ import TransactionHistory from "./pages/TransactionHistory.jsx";
 import ProfileSettings from "./pages/ProfileSettings.jsx";
 import UserProfile from "./components/UserProfile.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
-import { MultiplayerProvider } from "./context/MultiplayerContext.jsx";
+import { MultiplayerProvider } from "./components/multiplayer/MultiplayerContext.jsx";
 import MultiplayerTicTacToe from "./components/multiplayer/MultiplayerTicTacToe.jsx";
 import { useAuth } from "./config/AuthContext.jsx";
 import { updateUserCoins } from "./services/authService.js";

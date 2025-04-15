@@ -7,19 +7,11 @@ const app = express();
 app.use(cors());
 const server = http.createServer(app);
 
-// Allow client URL from environment variable or default to localhost in development
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
-
 const io = new Server(server, {
     cors: {
-        origin: CLIENT_URL,
+        origin: "http://localhost:3000",
         methods: ["GET", "POST"]
     }
-});
-
-// Add a basic route for health check
-app.get('/', (req, res) => {
-    res.json({ status: 'ok', message: 'Game server is running' });
 });
 
 // Store active games

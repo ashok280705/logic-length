@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from "../services/authService";
-import { useMultiplayer } from '../context/MultiplayerContext';
-import { multiplayerService } from '../services/multiplayerGameService';
 
 const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout }) => {
   const [userChoice, setUserChoice] = useState('');
@@ -15,9 +13,6 @@ const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout
   const [gameHistory, setGameHistory] = useState([]);
   const COST_TO_PLAY = cost; // Use the cost from props
   const navigate = useNavigate();
-  const { joinGame, leaveGame, gameState, opponent, isWaiting } = useMultiplayer();
-  const [matchId, setMatchId] = useState(null);
-  const [isSinglePlayer, setIsSinglePlayer] = useState(true);
 
   const choices = ['rock', 'paper', 'scissors'];
 
@@ -39,43 +34,33 @@ const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout
   }, [user, navigate]);
 
   useEffect(() => {
-    if (gameState) {
-      // Update game state based on multiplayer state
-      if (gameState.players) {
-        const userStr = localStorage.getItem('user');
-        const currentUser = userStr ? JSON.parse(userStr) : null;
-        const player = gameState.players.find(p => p.userId === currentUser?.uid);
-        
-        if (player && gameState.choices) {
-          setUserChoice(gameState.choices[player.userId] || '');
-        }
-        
-        // Set opponent's choice if available
-        if (opponent && gameState.choices && gameState.choices[opponent.userId]) {
-          setComputerChoice(gameState.choices[opponent.userId]);
-        }
-        
-        // Update game result if both players have made their choices
-        if (gameState.result) {
-          setResult(gameState.result[currentUser?.uid] || '');
-          if (gameState.result[currentUser?.uid] === 'You win!') {
-            setScore(prev => ({ ...prev, user: prev.user + 1 }));
-          } else if (gameState.result[currentUser?.uid] === 'You lose!') {
-            setScore(prev => ({ ...prev, computer: prev.computer + 1 }));
-          }
-        }
+    if (result) {
+      if (result === 'You win!') {
+        setScore(prev => ({ ...prev, user: prev.user + 1 }));
+        setGameHistory(prev => [...prev, { 
+          userChoice, 
+          computerChoice, 
+          result: 'win',
+          timestamp: new Date().toLocaleTimeString()
+        }]);
+      } else if (result === 'Computer wins!') {
+        setScore(prev => ({ ...prev, computer: prev.computer + 1 }));
+        setGameHistory(prev => [...prev, { 
+          userChoice, 
+          computerChoice, 
+          result: 'lose',
+          timestamp: new Date().toLocaleTimeString()
+        }]);
+      } else {
+        setGameHistory(prev => [...prev, { 
+          userChoice, 
+          computerChoice, 
+          result: 'tie',
+          timestamp: new Date().toLocaleTimeString()
+        }]);
       }
     }
-  }, [gameState, opponent]);
-
-  // Clean up when component unmounts
-  useEffect(() => {
-    return () => {
-      if (!isSinglePlayer && matchId) {
-        leaveGame();
-      }
-    };
-  }, [matchId]);
+  }, [result, userChoice, computerChoice]);
 
   const getComputerChoice = () => {
     const randomIndex = Math.floor(Math.random() * choices.length);
@@ -96,34 +81,27 @@ const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout
     }
   };
 
-  const startGame = async () => {
+  const startGame = () => {
+    // Check if user has enough coins
     if (userCoins < COST_TO_PLAY) {
       alert(`Not enough coins! You need ${COST_TO_PLAY} coins to play. Please top up your balance.`);
       navigate('/payment');
       return;
     }
 
+    // Use the deductCoins function from props
     const success = deductCoins();
+    
     if (!success) {
       alert(`Failed to deduct ${COST_TO_PLAY} coins. Please try again.`);
       return;
     }
-
-    setUserCoins(prevCoins => prevCoins - COST_TO_PLAY);
     
-    if (!isSinglePlayer) {
-      try {
-        await joinGame('rps');
-        setGameStarted(true);
-      } catch (error) {
-        console.error('Failed to join multiplayer game:', error);
-        alert('Failed to join multiplayer game. Please try again.');
-      }
-    } else {
-      setGameStarted(true);
-      setScore({ user: 0, computer: 0 });
-      setGameHistory([]);
-    }
+    // Update local state to reflect coin deduction
+    setUserCoins(prevCoins => prevCoins - COST_TO_PLAY);
+    setGameStarted(true);
+    setScore({ user: 0, computer: 0 });
+    setGameHistory([]);
   };
 
   const playGame = (choice) => {
@@ -137,27 +115,14 @@ const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout
     setComputerChoice('');
     setResult('');
     
-    if (!isSinglePlayer) {
-      // Send move to multiplayer service
-      multiplayerService.makeRPSChoice(gameState.gameId, choice);
-    } else {
-      setTimeout(() => {
-        const compChoice = getComputerChoice();
-        const gameResult = determineWinner(choice, compChoice);
-        setUserChoice(choice);
-        setComputerChoice(compChoice);
-        setResult(gameResult);
-        setShowAnimation(false);
-        
-        // Update history for single player mode
-        setGameHistory(prev => [...prev, {
-          userChoice: choice,
-          computerChoice: compChoice,
-          result: gameResult === 'You win!' ? 'win' : gameResult === 'Computer wins!' ? 'lose' : 'tie',
-          timestamp: new Date().toLocaleTimeString()
-        }]);
-      }, 1000);
-    }
+    setTimeout(() => {
+      const compChoice = getComputerChoice();
+      const gameResult = determineWinner(choice, compChoice);
+      setUserChoice(choice);
+      setComputerChoice(compChoice);
+      setResult(gameResult);
+      setShowAnimation(false);
+    }, 1000);
   };
 
   // Get user data from localStorage or props
@@ -251,35 +216,8 @@ const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout
             <h2 className="text-4xl font-extrabold mb-2 neon-text animate-pulse">
               {!gameStarted ? "Ready to Play?" : "Make Your Move"}
             </h2>
-            
             {!gameStarted && (
               <div className="glass-effect mx-auto max-w-md p-4 rounded-xl bg-[rgba(255,255,255,0.05)] backdrop-blur-sm border border-purple-500/20">
-                {/* Game mode selection */}
-                <div className="mb-4">
-                  <div className="flex justify-center gap-4">
-                    <button
-                      onClick={() => setIsSinglePlayer(true)}
-                      className={`px-6 py-3 rounded-xl transition-all duration-300 ${
-                        isSinglePlayer 
-                          ? 'bg-purple-600 text-white' 
-                          : 'bg-purple-900/30 text-purple-300'
-                      }`}
-                    >
-                      Single Player
-                    </button>
-                    <button
-                      onClick={() => setIsSinglePlayer(false)}
-                      className={`px-6 py-3 rounded-xl transition-all duration-300 ${
-                        !isSinglePlayer 
-                          ? 'bg-purple-600 text-white' 
-                          : 'bg-purple-900/30 text-purple-300'
-                      }`}
-                    >
-                      Multiplayer
-                    </button>
-                  </div>
-                </div>
-                
                 <p className="text-lg">
                   Cost to play: <span className="text-yellow-300 font-bold">{COST_TO_PLAY}</span> coins
                 </p>
@@ -288,93 +226,85 @@ const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout
             )}
           </div>
 
-          {/* Show waiting screen for multiplayer */}
-          {!isSinglePlayer && isWaiting ? (
-            <div className="text-center">
-              <h2 className="text-2xl mb-4">Waiting for opponent...</h2>
-              <div className="animate-spin text-4xl">🎮</div>
-            </div>
-          ) : (
-            /* Game area with perspective effect */
-            <div className="perspective-container mb-8">
-              <div className="perspective-element glass-effect min-h-[300px] rounded-2xl p-6 bg-[rgba(26,0,73,0.4)] border border-purple-500/20 backdrop-blur-md flex flex-col items-center justify-center relative overflow-hidden">
-                {/* Top pulsing border */}
-                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse"></div>
-                
-                {/* Choices display area */}
-                <div className="flex justify-center items-center mb-6 relative">
-                  {showAnimation ? (
-                    <div className="text-6xl animate-spin">🎮</div>
-                  ) : userChoice && computerChoice ? (
-                    <div className="flex flex-col md:flex-row items-center gap-4 md:gap-12">
-                      <div className="flex flex-col items-center">
-                        <span className="text-sm text-purple-300 mb-1">You chose</span>
-                        <div className="text-6xl transition-all duration-300 transform hover:scale-110 mb-2">
-                          {getEmoji(userChoice)}
-                        </div>
-                        <span className="capitalize text-white/80">{userChoice}</span>
+          {/* Game area with perspective effect */}
+          <div className="perspective-container mb-8">
+            <div className="perspective-element glass-effect min-h-[300px] rounded-2xl p-6 bg-[rgba(26,0,73,0.4)] border border-purple-500/20 backdrop-blur-md flex flex-col items-center justify-center relative overflow-hidden">
+              {/* Top pulsing border */}
+              <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse"></div>
+              
+              {/* Choices display area */}
+              <div className="flex justify-center items-center mb-6 relative">
+                {showAnimation ? (
+                  <div className="text-6xl animate-spin">🎮</div>
+                ) : userChoice && computerChoice ? (
+                  <div className="flex flex-col md:flex-row items-center gap-4 md:gap-12">
+                    <div className="flex flex-col items-center">
+                      <span className="text-sm text-purple-300 mb-1">You chose</span>
+                      <div className="text-6xl transition-all duration-300 transform hover:scale-110 mb-2">
+                        {getEmoji(userChoice)}
                       </div>
-                      
-                      <div className="text-2xl font-bold my-2 md:my-0 relative">
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full opacity-20 animate-pulse"></div>
-                        VS
-                      </div>
-                      
-                      <div className="flex flex-col items-center">
-                        <span className="text-sm text-purple-300 mb-1">Computer chose</span>
-                        <div className="text-6xl transition-all duration-300 transform hover:scale-110 mb-2">
-                          {getEmoji(computerChoice)}
-                        </div>
-                        <span className="capitalize text-white/80">{computerChoice}</span>
-                      </div>
+                      <span className="capitalize text-white/80">{userChoice}</span>
                     </div>
-                  ) : (
-                    <div className="text-xl text-purple-300">
-                      {gameStarted ? "Choose rock, paper, or scissors below!" : "Start the game to play!"}
+                    
+                    <div className="text-2xl font-bold my-2 md:my-0 relative">
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full opacity-20 animate-pulse"></div>
+                      VS
                     </div>
-                  )}
-                </div>
-                
-                {/* Result display */}
-                {result && (
-                  <div className={`text-2xl font-bold mb-6 ${getResultClass(result)} animate-bounce`}>
-                    {result}
+                    
+                    <div className="flex flex-col items-center">
+                      <span className="text-sm text-purple-300 mb-1">Computer chose</span>
+                      <div className="text-6xl transition-all duration-300 transform hover:scale-110 mb-2">
+                        {getEmoji(computerChoice)}
+                      </div>
+                      <span className="capitalize text-white/80">{computerChoice}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xl text-purple-300">
+                    {gameStarted ? "Choose rock, paper, or scissors below!" : "Start the game to play!"}
                   </div>
                 )}
-                
-                {/* Game controls */}
-                <div className="flex flex-wrap justify-center gap-4 mt-4">
-                  {gameStarted ? (
-                    <>
-                      {choices.map((choice) => (
-                        <button
-                          key={choice}
-                          onClick={() => playGame(choice)}
-                          disabled={showAnimation}
-                          className="holo-card relative bg-gradient-to-br from-[rgba(55,20,150,0.7)] to-[rgba(25,0,73,0.7)] hover:from-[rgba(85,30,180,0.8)] hover:to-[rgba(35,5,103,0.8)] px-6 py-4 rounded-xl border border-purple-500/30 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] backdrop-blur-sm"
-                        >
-                          <div className="flex flex-col items-center">
-                            <span className="text-4xl mb-2">{getEmoji(choice)}</span>
-                            <span className="capitalize font-medium">{choice}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </>
-                  ) : (
-                    <button
-                      onClick={startGame}
-                      className="ultra-gradient text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-[0_0_25px_rgba(139,92,246,0.6)] transition-all duration-300 transform hover:scale-105 pulse-effect"
-                    >
-                      Start Game ({COST_TO_PLAY} coins)
-                    </button>
-                  )}
-                </div>
-                
-                {/* Bottom pulsing border */}
-                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse"></div>
               </div>
+              
+              {/* Result display */}
+              {result && (
+                <div className={`text-2xl font-bold mb-6 ${getResultClass(result)} animate-bounce`}>
+                  {result}
+                </div>
+              )}
+              
+              {/* Game controls */}
+              <div className="flex flex-wrap justify-center gap-4 mt-4">
+                {gameStarted ? (
+                  <>
+                    {choices.map((choice) => (
+                      <button
+                        key={choice}
+                        onClick={() => playGame(choice)}
+                        disabled={showAnimation}
+                        className="holo-card relative bg-gradient-to-br from-[rgba(55,20,150,0.7)] to-[rgba(25,0,73,0.7)] hover:from-[rgba(85,30,180,0.8)] hover:to-[rgba(35,5,103,0.8)] px-6 py-4 rounded-xl border border-purple-500/30 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] backdrop-blur-sm"
+                      >
+                        <div className="flex flex-col items-center">
+                          <span className="text-4xl mb-2">{getEmoji(choice)}</span>
+                          <span className="capitalize font-medium">{choice}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <button
+                    onClick={startGame}
+                    className="ultra-gradient text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-[0_0_25px_rgba(139,92,246,0.6)] transition-all duration-300 transform hover:scale-105 pulse-effect"
+                  >
+                    Start Game ({COST_TO_PLAY} coins)
+                  </button>
+                )}
+              </div>
+              
+              {/* Bottom pulsing border */}
+              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500 to-transparent animate-pulse"></div>
             </div>
-          )}
+          </div>
           
           {/* Score display */}
           <div className="glass-effect rounded-xl p-4 bg-[rgba(26,0,73,0.4)] border border-purple-500/20 backdrop-blur-md">

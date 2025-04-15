@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import Navbar from '../components/navbar.jsx';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from "../services/authService";
-import { useMultiplayer } from '../context/MultiplayerContext';
-import { multiplayerService } from '../services/multiplayerGameService';
 
 const pieces = {
   Pawn: "♙", Knight: "♘", Bishop: "♗", Rook: "♖", Queen: "♕", King: "♔",
@@ -34,8 +32,6 @@ const ChessGame = ({ cost = 10, deductCoins = () => true, user, onLogout }) => {
   const [userCoins, setUserCoins] = useState(user?.coins || 0);
   const COST_TO_PLAY = cost; // Use the cost from props
   const navigate = useNavigate();
-  const { joinGame, leaveGame, gameState, opponent, isWaiting } = useMultiplayer();
-  const [playerColor, setPlayerColor] = useState(null);
 
   useEffect(() => {
     // If user prop is provided, use it instead of fetching from localStorage
@@ -54,62 +50,31 @@ const ChessGame = ({ cost = 10, deductCoins = () => true, user, onLogout }) => {
     }
   }, [user, navigate]);
 
-  useEffect(() => {
-    if (gameState) {
-      setBoard(gameState.board || initialBoard);
-      setCurrentPlayer(gameState.currentPlayer || "white");
-      setMoveHistory(gameState.moveHistory || []);
-      
-      // Set player's color based on game state
-      if (!playerColor && gameState.players) {
-        const userStr = localStorage.getItem('user');
-        const currentUser = userStr ? JSON.parse(userStr) : null;
-        const player = gameState.players.find(p => p.userId === currentUser?.uid);
-        if (player) {
-          setPlayerColor(player.color);
-        }
-      }
-    }
-  }, [gameState]);
-
-  // Clean up when component unmounts
-  useEffect(() => {
-    return () => {
-      if (!isSinglePlayer) {
-        leaveGame();
-      }
-    };
-  }, []);
-
-  const startGame = async () => {
+  const startGame = () => {
+    // Check if user has enough coins
     if (userCoins < COST_TO_PLAY) {
       alert(`Not enough coins! You need ${COST_TO_PLAY} coins to play. Please top up your balance.`);
       navigate('/payment');
       return;
     }
 
+    // Use the deductCoins function from props
     const success = deductCoins();
+    
     if (!success) {
       alert(`Failed to deduct ${COST_TO_PLAY} coins. Please try again.`);
       return;
     }
-
+    
+    // Update local state to reflect coin deduction
     setUserCoins(prevCoins => prevCoins - COST_TO_PLAY);
     
-    if (!isSinglePlayer) {
-      try {
-        await joinGame('chess');
-        setGameStarted(true);
-      } catch (error) {
-        console.error('Failed to join multiplayer game:', error);
-        alert('Failed to join multiplayer game. Please try again.');
-      }
-    } else {
-      setGameStarted(true);
-      setBoard(initialBoard);
-      setCurrentPlayer("white");
-      setMoveHistory([]);
-    }
+    setGameStarted(true);
+    setGameOver(false);
+    setWinner(null);
+    setBoard(initialBoard);
+    setCurrentPlayer("white");
+    setMoveHistory([]);
   };
 
   const handleGameOver = (winner) => {
@@ -404,22 +369,14 @@ const ChessGame = ({ cost = 10, deductCoins = () => true, user, onLogout }) => {
       const toRow = row;
       const toCol = col;
       
-      // In multiplayer, only allow moves if it's player's turn
-      if (!isSinglePlayer) {
-        const isWhitePiece = draggedPiece.charCodeAt(0) < 9818;
-        if ((isWhitePiece && playerColor !== 'white') || (!isWhitePiece && playerColor !== 'black')) {
-          setDraggedPiece(null);
-          setDraggedPosition(null);
-          return;
-        }
-      }
-
+      // Check if the move is valid
       if (!isValidMove(fromRow, fromCol, toRow, toCol, draggedPiece)) {
         setDraggedPiece(null);
         setDraggedPosition(null);
         return;
       }
-
+      
+      // Make a temporary board to check if the move puts/leaves the king in check
       const tempBoard = board.map(r => [...r]);
       tempBoard[toRow][toCol] = draggedPiece;
       tempBoard[fromRow][fromCol] = "";
@@ -430,35 +387,32 @@ const ChessGame = ({ cost = 10, deductCoins = () => true, user, onLogout }) => {
         setDraggedPosition(null);
         return;
       }
-
+      
+      // Record the move
       const move = {
         piece: draggedPiece,
         from: [fromRow, fromCol],
         to: [toRow, toCol],
         captured: board[toRow][toCol] || null
       };
-
-      if (!isSinglePlayer) {
-        // Send move to multiplayer service
-        multiplayerService.makeChessMove(gameState.gameId, 
-          { fromRow, fromCol, toRow, toCol, piece: draggedPiece }
-        );
-      } else {
-        // Update local game state
-        const newBoard = board.map(r => [...r]);
-        newBoard[fromRow][fromCol] = "";
-        newBoard[toRow][toCol] = draggedPiece;
-        setBoard(newBoard);
-        setCurrentPlayer(currentPlayer === "white" ? "black" : "white");
-        setMoveHistory([...moveHistory, move]);
-        
-        if (!checkGameOver(newBoard, false) && isSinglePlayer) {
+      
+      // Update the board
+      const newBoard = board.map(r => [...r]);
+      newBoard[fromRow][fromCol] = "";
+      newBoard[toRow][toCol] = draggedPiece;
+      setBoard(newBoard);
+      setDraggedPiece(null);
+      setDraggedPosition(null);
+      setCurrentPlayer("black");
+      setMoveHistory([...moveHistory, move]);
+      setGameStarted(true);
+      
+      // Check if the game is over
+      if (!checkGameOver(newBoard, false)) {
+        if (isSinglePlayer) {
           setTimeout(() => makeComputerMove(newBoard), 500);
         }
       }
-
-      setDraggedPiece(null);
-      setDraggedPosition(null);
     }
   };
 
@@ -592,32 +546,6 @@ const ChessGame = ({ cost = 10, deductCoins = () => true, user, onLogout }) => {
               Ready to Play Chess?
             </h2>
 
-            {/* Game mode selection */}
-            <div className="mb-6">
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={() => setIsSinglePlayer(true)}
-                  className={`px-6 py-3 rounded-xl transition-all duration-300 ${
-                    isSinglePlayer 
-                      ? 'bg-purple-600 text-white' 
-                      : 'bg-purple-900/30 text-purple-300'
-                  }`}
-                >
-                  Single Player
-                </button>
-                <button
-                  onClick={() => setIsSinglePlayer(false)}
-                  className={`px-6 py-3 rounded-xl transition-all duration-300 ${
-                    !isSinglePlayer 
-                      ? 'bg-purple-600 text-white' 
-                      : 'bg-purple-900/30 text-purple-300'
-                  }`}
-                >
-                  Multiplayer
-                </button>
-              </div>
-            </div>
-
             {/* Coin requirement card */}
             <div className="w-full max-w-md mx-auto mb-6 p-4 rounded-xl bg-[#1a1039]/90 border-2 border-purple-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)]">
               <div className="flex items-center justify-between">
@@ -648,115 +576,107 @@ const ChessGame = ({ cost = 10, deductCoins = () => true, user, onLogout }) => {
       ) : (
         // Main game interface once started
         <div className="container mx-auto px-4 py-8">
-          {/* Show waiting screen for multiplayer */}
-          {!isSinglePlayer && isWaiting ? (
-            <div className="text-center text-white">
-              <h2 className="text-2xl mb-4">Waiting for opponent...</h2>
-              <div className="animate-spin text-4xl">🎮</div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              {/* Sidebar */}
-              <div className="lg:col-span-1 space-y-6">
-                {/* Game Controls */}
-                <div className="glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                  <h2 className="text-xl font-bold text-purple-300 mb-4">Game Controls</h2>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-purple-300">Game Mode:</span>
-                      <div className="relative inline-block w-16 h-8 rounded-full bg-purple-900/50">
-                        <button
-                          onClick={() => setIsSinglePlayer(!isSinglePlayer)}
-                          className={`absolute top-1 left-1 w-6 h-6 rounded-full transition-all duration-300 ${
-                            isSinglePlayer ? 'bg-purple-500 translate-x-8' : 'bg-pink-500'
-                          }`}
-                        ></button>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+              {/* Game Controls */}
+              <div className="glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                <h2 className="text-xl font-bold text-purple-300 mb-4">Game Controls</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-purple-300">Game Mode:</span>
+                    <div className="relative inline-block w-16 h-8 rounded-full bg-purple-900/50">
+                      <button
+                        onClick={() => setIsSinglePlayer(!isSinglePlayer)}
+                        className={`absolute top-1 left-1 w-6 h-6 rounded-full transition-all duration-300 ${
+                          isSinglePlayer ? 'bg-purple-500 translate-x-8' : 'bg-pink-500'
+                        }`}
+                      ></button>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-purple-300">{isSinglePlayer ? "Single Player" : "Multiplayer"}</span>
+                  </div>
+                  <div className="pt-4 space-y-3">
+                    <button 
+                      onClick={resetGame}
+                      className="w-full py-3 bg-gradient-to-r from-purple-700 to-pink-700 text-white rounded-lg text-lg font-bold transition-all hover:from-purple-600 hover:to-pink-600 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)]"
+                    >
+                      Reset Game
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Player */}
+              <div className="glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                <h2 className="text-xl font-bold text-purple-300 mb-2">Current Turn</h2>
+                <div className={`text-2xl font-bold ${currentPlayer === "white" ? "text-white" : "text-gray-300"}`}>
+                  {gameOver ? (winner === "Draw" ? "Game Draw!" : `${winner} Wins!`) : (currentPlayer === "white" ? "White" : "Black")}
+                </div>
+              </div>
+
+              {/* Move History */}
+              <div className="glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                <h2 className="text-xl font-bold text-purple-300 mb-2">Move History</h2>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {moveHistory.length === 0 ? (
+                    <p className="text-purple-300/70 text-center">No moves yet</p>
+                  ) : (
+                    moveHistory.map((move, index) => (
+                      <div key={index} className="flex justify-between items-center p-2 bg-purple-900/30 rounded-lg">
+                        <span className="text-white">{move.piece}</span>
+                        <span className="text-purple-300">
+                          {String.fromCharCode(97 + move.from[1])}{8 - move.from[0]} → {String.fromCharCode(97 + move.to[1])}{8 - move.to[0]}
+                        </span>
                       </div>
-                    </div>
-                    <div className="text-center">
-                      <span className="text-purple-300">{isSinglePlayer ? "Single Player" : "Multiplayer"}</span>
-                    </div>
-                    <div className="pt-4 space-y-3">
-                      <button 
-                        onClick={resetGame}
-                        className="w-full py-3 bg-gradient-to-r from-purple-700 to-pink-700 text-white rounded-lg text-lg font-bold transition-all hover:from-purple-600 hover:to-pink-600 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)]"
-                      >
-                        Reset Game
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Current Player */}
-                <div className="glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                  <h2 className="text-xl font-bold text-purple-300 mb-2">Current Turn</h2>
-                  <div className={`text-2xl font-bold ${currentPlayer === "white" ? "text-white" : "text-gray-300"}`}>
-                    {gameOver ? (winner === "Draw" ? "Game Draw!" : `${winner} Wins!`) : (currentPlayer === "white" ? "White" : "Black")}
-                  </div>
-                </div>
-
-                {/* Move History */}
-                <div className="glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                  <h2 className="text-xl font-bold text-purple-300 mb-2">Move History</h2>
-                  <div className="max-h-60 overflow-y-auto space-y-2">
-                    {moveHistory.length === 0 ? (
-                      <p className="text-purple-300/70 text-center">No moves yet</p>
-                    ) : (
-                      moveHistory.map((move, index) => (
-                        <div key={index} className="flex justify-between items-center p-2 bg-purple-900/30 rounded-lg">
-                          <span className="text-white">{move.piece}</span>
-                          <span className="text-purple-300">
-                            {String.fromCharCode(97 + move.from[1])}{8 - move.from[0]} → {String.fromCharCode(97 + move.to[1])}{8 - move.to[0]}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Chess Board */}
-              <div className="lg:col-span-3 flex flex-col items-center">
-                <div className="glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                  <div className="grid grid-cols-8 gap-0 rounded-lg overflow-hidden">
-                    {board.map((row, rowIndex) =>
-                      row.map((piece, colIndex) => (
-                        <div
-                          key={`${rowIndex}-${colIndex}`}
-                          className={`w-16 h-16 flex items-center justify-center ${
-                            (rowIndex + colIndex) % 2 === 0 ? "bg-[#1b1039]" : "bg-[#321b5f]"
-                          } text-white text-4xl cursor-${piece ? "grab" : "default"} transition-all duration-300 hover:bg-purple-700/30`}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={() => handleDrop(rowIndex, colIndex)}
-                        >
-                          {piece && (
-                            <span
-                              draggable
-                              onDragStart={() => handleDragStart(rowIndex, colIndex)}
-                              className={`select-none transition-transform duration-300 hover:scale-110 ${
-                                piece.charCodeAt(0) >= 9818 ? "text-gray-300" : "text-white"
-                              }`}
-                            >
-                              {piece}
-                            </span>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Game Instructions */}
-                <div className="mt-6 glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)] text-center w-full">
-                  <h2 className="text-xl font-bold text-purple-300 mb-2">How to Play</h2>
-                  <p className="text-purple-300/90">
-                    Drag and drop pieces to move them. In single player mode, you control the white pieces.
-                    {gameOver && ` Game Over! ${winner === "Draw" ? "It's a draw!" : `${winner} wins!`}`}
-                  </p>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
-          )}
+
+            {/* Chess Board */}
+            <div className="lg:col-span-3 flex flex-col items-center">
+              <div className="glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                <div className="grid grid-cols-8 gap-0 rounded-lg overflow-hidden">
+                  {board.map((row, rowIndex) =>
+                    row.map((piece, colIndex) => (
+                      <div
+                        key={`${rowIndex}-${colIndex}`}
+                        className={`w-16 h-16 flex items-center justify-center ${
+                          (rowIndex + colIndex) % 2 === 0 ? "bg-[#1b1039]" : "bg-[#321b5f]"
+                        } text-white text-4xl cursor-${piece ? "grab" : "default"} transition-all duration-300 hover:bg-purple-700/30`}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => handleDrop(rowIndex, colIndex)}
+                      >
+                        {piece && (
+                          <span
+                            draggable
+                            onDragStart={() => handleDragStart(rowIndex, colIndex)}
+                            className={`select-none transition-transform duration-300 hover:scale-110 ${
+                              piece.charCodeAt(0) >= 9818 ? "text-gray-300" : "text-white"
+                            }`}
+                          >
+                            {piece}
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Game Instructions */}
+              <div className="mt-6 glass-effect p-6 rounded-2xl border-2 border-purple-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)] text-center w-full">
+                <h2 className="text-xl font-bold text-purple-300 mb-2">How to Play</h2>
+                <p className="text-purple-300/90">
+                  Drag and drop pieces to move them. In single player mode, you control the white pieces.
+                  {gameOver && ` Game Over! ${winner === "Draw" ? "It's a draw!" : `${winner} wins!`}`}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

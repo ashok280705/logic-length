@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "Multiplayer game server for Logic Length",
   "main": "gameServer.js",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "scripts": {
     "start": "node gameServer.js",
     "dev": "nodemon gameServer.js"
