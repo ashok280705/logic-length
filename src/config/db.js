@@ -8,6 +8,14 @@ dotenv.config();
 const defaultMongoURI = 'mongodb+srv://anujmayekar001:cGFcVsaYqhSlkYpR@cluster0.q8tufbn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
 const connectDB = async () => {
+  // Log connection strings for debugging
+  console.log('=== MongoDB Connection Debugging ===');
+  console.log('Default MongoDB URI domain:', defaultMongoURI.includes('@') ? defaultMongoURI.split('@')[1].split('/')[0] : 'unknown');
+  console.log('Environment MONGODB_URI domain:', process.env.MONGODB_URI ? (process.env.MONGODB_URI.includes('@') ? process.env.MONGODB_URI.split('@')[1].split('/')[0] : 'not present') : 'not defined');
+  console.log('Environment MONGODB_DIRECT_URI set:', !!process.env.MONGODB_DIRECT_URI);
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('==================================');
+
   // Common mongoose options - simplified to avoid unsupported options
   const connectionOptions = {
     serverSelectionTimeoutMS: 30000, // Timeout after 30 seconds instead of 10
@@ -36,7 +44,22 @@ const connectDB = async () => {
 
   // Try the standard SRV connection string
   try {
-    // Use environment variable if available, otherwise use the default connection string
+    // CHANGE: Always try direct connection first on Render
+    if (process.env.NODE_ENV === 'production' && process.env.MONGODB_DIRECT_URI) {
+      console.log('Production environment detected, using direct MongoDB connection...');
+      
+      // Use direct connection since we're on Render (likely having DNS SRV issues)
+      const conn = await mongoose.connect(process.env.MONGODB_DIRECT_URI, {
+        serverSelectionTimeoutMS: 30000,
+        socketTimeoutMS: 45000
+      });
+      
+      console.log(`MongoDB Connected directly (production): ${conn.connection.host}`);
+      setupEventListeners(process.env.MONGODB_DIRECT_URI);
+      return conn;
+    }
+    
+    // If not on production or no direct URI is set, try SRV connection
     const mongoURI = process.env.MONGODB_URI || defaultMongoURI;
     
     console.log('Connecting to MongoDB via SRV...');
@@ -60,7 +83,7 @@ const connectDB = async () => {
         error.message.includes('DNS lookup failed')) {
       
       console.error('DNS resolution failed for SRV record. This is common on some hosting providers.');
-      console.error('Trying a direct connection to MongoDB without SRV...');
+      console.error('Trying direct connection to MongoDB without SRV...');
       
       // Check if we have a direct URI as fallback
       if (process.env.MONGODB_DIRECT_URI) {
@@ -78,11 +101,47 @@ const connectDB = async () => {
           return conn;
         } catch (directError) {
           console.error('Direct connection also failed:', directError.message);
-          throw directError; // Re-throw the error
+          
+          // LAST RESORT: Try hardcoded direct connection string as final fallback
+          try {
+            console.log('Attempting connection with hardcoded direct URI as last resort...');
+            // Hardcoded direct connection string as absolute last resort
+            const hardcodedURI = 'mongodb://anujmayekar001:cGFcVsaYqhSlkYpR@ac-msknuzl-shard-00-00.q8tufbn.mongodb.net:27017,ac-msknuzl-shard-00-01.q8tufbn.mongodb.net:27017,ac-msknuzl-shard-00-02.q8tufbn.mongodb.net:27017/?ssl=true&replicaSet=atlas-cnrzsm-shard-0&authSource=admin&retryWrites=true&w=majority';
+            
+            const conn = await mongoose.connect(hardcodedURI, {
+              serverSelectionTimeoutMS: 30000,
+              socketTimeoutMS: 45000
+            });
+            
+            console.log(`MongoDB Connected via hardcoded URI: ${conn.connection.host}`);
+            setupEventListeners(hardcodedURI);
+            return conn;
+          } catch (lastError) {
+            console.error('All connection attempts failed:', lastError.message);
+            throw lastError;
+          }
         }
       } else {
         console.error('No MONGODB_DIRECT_URI provided in environment variables for fallback.');
-        console.error('Please add a direct connection string to your .env file as MONGODB_DIRECT_URI');
+        console.error('Attempting connection with hardcoded direct URI as last resort...');
+        
+        // LAST RESORT: Try hardcoded direct connection string if no env variable
+        try {
+          // Hardcoded direct connection string as absolute last resort
+          const hardcodedURI = 'mongodb://anujmayekar001:cGFcVsaYqhSlkYpR@ac-msknuzl-shard-00-00.q8tufbn.mongodb.net:27017,ac-msknuzl-shard-00-01.q8tufbn.mongodb.net:27017,ac-msknuzl-shard-00-02.q8tufbn.mongodb.net:27017/?ssl=true&replicaSet=atlas-cnrzsm-shard-0&authSource=admin&retryWrites=true&w=majority';
+          
+          const conn = await mongoose.connect(hardcodedURI, {
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000
+          });
+          
+          console.log(`MongoDB Connected via hardcoded URI: ${conn.connection.host}`);
+          setupEventListeners(hardcodedURI);
+          return conn;
+        } catch (lastError) {
+          console.error('All connection attempts failed:', lastError.message);
+          throw lastError;
+        }
       }
     }
     
