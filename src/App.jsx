@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from "react-router-dom";
+import { Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./components/navbar.jsx";
 import Main_bar from "./components/main_bar.jsx";
 import Login from "./components/login.jsx";
@@ -53,286 +53,278 @@ const App = () => {
   };
 
   return (
-    <Router>
-      <MultiplayerProvider>
-        <Routes>
-          {/* If there's no user, render Login page */}
-          <Route path="/" element={!currentUser ? <Login /> : <Navigate to="/home" />} />
-          
-          {/* Add explicit login route */}
-          <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/home" />} />
-          
-          {/* Add explicit register route */}
-          <Route path="/register" element={!currentUser ? <Login isLogin={false} /> : <Navigate to="/home" />} />
+    <MultiplayerProvider>
+      <Routes>
+        {/* If there's no user, render Login page */}
+        <Route path="/" element={!currentUser ? <Login /> : <Navigate to="/home" />} />
+        
+        {/* Add explicit login route */}
+        <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/home" />} />
+        
+        {/* Add explicit register route */}
+        <Route path="/register" element={!currentUser ? <Login isLogin={false} /> : <Navigate to="/home" />} />
 
-          {/* Add profile route */}
-          <Route
-            path="/profile"
-            element={
-              currentUser ? (
-                <>
-                  <Navbar />
-                  <UserProfile />
-                </>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
+        {/* Add profile route */}
+        <Route
+          path="/profile"
+          element={
+            currentUser ? (
+              <>
+                <Navbar />
+                <UserProfile />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-          {/* Protected Home Page */}
-          <Route
-            path="/home"
-            element={
-              currentUser ? (
-                <>
-                  <Navbar />
-                  <Main_bar gameCosts={GAME_COSTS} />
-                </>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
+        {/* Protected Home Page */}
+        <Route
+          path="/home"
+          element={
+            currentUser ? (
+              <>
+                <Navbar />
+                <Main_bar gameCosts={GAME_COSTS} />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-          {/* Game History */}
-          <Route
-            path="/game-history"
-            element={
-              currentUser ? (
-                <>
-                  <Navbar />
-                  <ErrorBoundary>
-                    <GameHistory />
-                  </ErrorBoundary>
-                </>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
+        {/* Game History */}
+        <Route
+          path="/game-history"
+          element={
+            currentUser ? (
+              <>
+                <Navbar />
+                <ErrorBoundary>
+                  <GameHistory />
+                </ErrorBoundary>
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-          {/* Transaction History */}
-          <Route
-            path="/transaction-history"
-            element={
-              currentUser ? (
-                <>
-                  <Navbar />
-                  <ErrorBoundary>
-                    <TransactionHistory />
-                  </ErrorBoundary>
-                </>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
+        {/* Transaction History */}
+        <Route
+          path="/transaction-history"
+          element={
+            currentUser ? (
+              <>
+                <Navbar />
+                <ErrorBoundary>
+                  <TransactionHistory />
+                </ErrorBoundary>
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-          {/* Profile Settings */}
-          <Route
-            path="/profile-settings"
-            element={
-              currentUser ? (
-                <>
-                  <Navbar />
-                  <ProfileSettings />
-                </>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
+        {/* Profile Settings */}
+        <Route
+          path="/profile-settings"
+          element={
+            currentUser ? (
+              <>
+                <Navbar />
+                <ProfileSettings />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-          {/* New Multiplayer Games Page */}
-          <Route
-            path="/multiplayer-games"
-            element={
-              currentUser ? (
-                <>
-                  <Navbar />
-                  <MultiplayerGames 
-                    games={[
-                      { name: "Chess", path: "/chess", cost: GAME_COSTS.chess },
-                      { name: "Tic Tac Toe", path: "/tictactoe", cost: GAME_COSTS.tictactoe },
-                      { name: "Rock Paper Scissors", path: "/rock-paper-scissors", cost: GAME_COSTS['mines-plinko'] }
-                    ]} 
-                  />
-                </>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
+        {/* New Multiplayer Games Page */}
+        <Route
+          path="/multiplayer-games"
+          element={
+            currentUser ? (
+              <>
+                <Navbar />
+                <MultiplayerGames 
+                  games={[
+                    { name: "Chess", path: "/chess", cost: GAME_COSTS.chess },
+                    { name: "Tic Tac Toe", path: "/tictactoe", cost: GAME_COSTS.tictactoe },
+                    { name: "Rock Paper Scissors", path: "/rock-paper-scissors", cost: GAME_COSTS['mines-plinko'] }
+                  ]} 
+                />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-          {/* New Single Player Games Page */}
-          <Route
-            path="/single-player-games"
-            element={
-              currentUser ? (
-                <>
-                  <Navbar />
-                  <SinglePlayerGames 
-                    games={[
-                      { name: "Stack-Game", path: "/snakes", cost: GAME_COSTS.snakes },
-                      { name: "Mines", path: "/snail-race", cost: GAME_COSTS['snail-race'] },
-                      { name: "Rock-Paper-Sissors", path: "/mines-plinko", cost: 10 }
-                    ]} 
-                  />
-                </>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
+        {/* New Single Player Games Page */}
+        <Route
+          path="/single-player-games"
+          element={
+            currentUser ? (
+              <>
+                <Navbar />
+                <SinglePlayerGames 
+                  games={[
+                    { name: "Stack-Game", path: "/snakes", cost: GAME_COSTS.snakes },
+                    { name: "Mines", path: "/snail-race", cost: GAME_COSTS['snail-race'] },
+                    { name: "Rock-Paper-Sissors", path: "/mines-plinko", cost: 10 }
+                  ]} 
+                />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-          {/* Protected Games Page with coin requirements */}
-          <Route 
-            path="/tictactoe" 
-            element={
-              currentUser ? (
-                hasEnoughCoins('tictactoe') ? (
-                  <Game1 cost={GAME_COSTS.tictactoe} deductCoins={() => deductCoins('tictactoe')} />
-                ) : (
-                  <Navigate to="/payment" />
-                )
+        {/* Protected Games Page with coin requirements */}
+        <Route 
+          path="/tictactoe" 
+          element={
+            currentUser ? (
+              hasEnoughCoins('tictactoe') ? (
+                <Game1 cost={GAME_COSTS.tictactoe} deductCoins={() => deductCoins('tictactoe')} />
               ) : (
-                <Navigate to="/login" />
+                <Navigate to="/payment" />
               )
-            } 
-          />
-          
-          <Route 
-            path="/chess" 
-            element={
-              currentUser ? (
-                hasEnoughCoins('chess') ? (
-                  <Game3 cost={GAME_COSTS.chess} deductCoins={() => deductCoins('chess')} />
-                ) : (
-                  <Navigate to="/payment" />
-                )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+        
+        <Route 
+          path="/chess" 
+          element={
+            currentUser ? (
+              hasEnoughCoins('chess') ? (
+                <Game3 cost={GAME_COSTS.chess} deductCoins={() => deductCoins('chess')} />
               ) : (
-                <Navigate to="/login" />
+                <Navigate to="/payment" />
               )
-            } 
-          />
-          
-          <Route 
-            path="/snakes" 
-            element={
-              currentUser ? (
-                hasEnoughCoins('snakes') ? (
-                  <Game4 cost={GAME_COSTS.snakes} deductCoins={() => deductCoins('snakes')} />
-                ) : (
-                  <Navigate to="/payment" />
-                )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+        
+        <Route 
+          path="/snakes" 
+          element={
+            currentUser ? (
+              hasEnoughCoins('snakes') ? (
+                <Game4 cost={GAME_COSTS.snakes} deductCoins={() => deductCoins('snakes')} />
               ) : (
-                <Navigate to="/login" />
+                <Navigate to="/payment" />
               )
-            } 
-          />
-          
-          <Route 
-            path="/rock-paper-scissors" 
-            element={
-              currentUser ? (
-                hasEnoughCoins('rock-paper-scissors') ? (
-                  <Game5 cost={GAME_COSTS['rock-paper-scissors']} deductCoins={() => deductCoins('rock-paper-scissors')} />
-                ) : (
-                  <Navigate to="/payment" />
-                )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+        
+        <Route 
+          path="/rock-paper-scissors" 
+          element={
+            currentUser ? (
+              hasEnoughCoins('rock-paper-scissors') ? (
+                <Game5 cost={GAME_COSTS['rock-paper-scissors']} deductCoins={() => deductCoins('rock-paper-scissors')} />
               ) : (
-                <Navigate to="/login" />
+                <Navigate to="/payment" />
               )
-            } 
-          />
-          
-          <Route 
-            path="/snail-race" 
-            element={
-              currentUser ? (
-                hasEnoughCoins('snail-race') ? (
-                  <Game6 cost={GAME_COSTS['snail-race']} deductCoins={() => deductCoins('snail-race')} />
-                ) : (
-                  <Navigate to="/payment" />
-                )
-              ) : (
-                <Navigate to="/login" />
-              )
-            } 
-          />
-          
-          <Route 
-            path="/game7" 
-            element={
-              currentUser ? (
-                hasEnoughCoins('game7') ? (
-                  <Game7 cost={GAME_COSTS.game7} deductCoins={() => deductCoins('game7')} />
-                ) : (
-                  <Navigate to="/payment" />
-                )
-              ) : (
-                <Navigate to="/login" />
-              )
-            } 
-          />
-          
-          <Route 
-            path="/game8" 
-            element={
-              currentUser ? (
-                hasEnoughCoins('game8') ? (
-                  <Game8 cost={GAME_COSTS.game8} deductCoins={() => deductCoins('game8')} />
-                ) : (
-                  <Navigate to="/payment" />
-                )
-              ) : (
-                <Navigate to="/login" />
-              )
-            } 
-          />
-          
-          <Route
-            path="/payment"
-            element={
-              currentUser ? (
-                <>
-                  <Navbar />
-                  <Payment 
-                    key={`payment-page-${userProfile.activeZone}`} 
-                    onSuccess={userProfile.handlePaymentSuccess} 
-                    zoneMode={userProfile.activeZone} 
-                  />
-                </>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
 
-          {/* Add new route for Multiplayer Tic Tac Toe with coin requirement */}
-          <Route 
-            path="/multiplayer-tictactoe" 
-            element={
-              currentUser ? (
-                hasEnoughCoins('multiplayer-tictactoe') ? (
-                  <>
-                    <Navbar />
-                    <ErrorBoundary>
-                      <MultiplayerTicTacToe cost={GAME_COSTS['multiplayer-tictactoe']} deductCoins={() => deductCoins('multiplayer-tictactoe')} />
-                    </ErrorBoundary>
-                  </>
-                ) : (
-                  <Navigate to="/payment" />
-                )
+        <Route 
+          path="/mines-plinko" 
+          element={
+            currentUser ? (
+              hasEnoughCoins('mines-plinko') ? (
+                <Game6 cost={GAME_COSTS['mines-plinko']} deductCoins={() => deductCoins('mines-plinko')} />
               ) : (
-                <Navigate to="/login" />
+                <Navigate to="/payment" />
               )
-            } 
-          />
-        </Routes>
-      </MultiplayerProvider>
-    </Router>
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+        
+        <Route 
+          path="/snail-race" 
+          element={
+            currentUser ? (
+              hasEnoughCoins('snail-race') ? (
+                <Game7 cost={GAME_COSTS['snail-race']} deductCoins={() => deductCoins('snail-race')} />
+              ) : (
+                <Navigate to="/payment" />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+
+        <Route 
+          path="/aviator" 
+          element={
+            currentUser ? (
+              hasEnoughCoins('game8') ? (
+                <Game8 cost={GAME_COSTS.game8} deductCoins={() => deductCoins('game8')} />
+              ) : (
+                <Navigate to="/payment" />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+
+        <Route 
+          path="/multiplayer-tictactoe" 
+          element={
+            currentUser ? (
+              hasEnoughCoins('multiplayer-tictactoe') ? (
+                <MultiplayerTicTacToe cost={GAME_COSTS['multiplayer-tictactoe']} deductCoins={() => deductCoins('multiplayer-tictactoe')} />
+              ) : (
+                <Navigate to="/payment" />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+
+        {/* Payment page */}
+        <Route 
+          path="/payment" 
+          element={
+            currentUser ? (
+              <>
+                <Navbar />
+                <Payment />
+              </>
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+
+        {/* Catch all route - redirect to home if logged in or login page if not */}
+        <Route path="*" element={currentUser ? <Navigate to="/home" /> : <Navigate to="/login" />} />
+      </Routes>
+    </MultiplayerProvider>
   );
 };
 
