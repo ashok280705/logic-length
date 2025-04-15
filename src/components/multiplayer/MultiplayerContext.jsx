@@ -33,22 +33,38 @@ export const MultiplayerProvider = ({ children }) => {
       // Make sure the serverUrl is used exactly as provided from env
       const socketInstance = io(serverUrl, {
         withCredentials: true,
-        reconnectionAttempts: isRenderConnection ? 15 : 10, // More attempts for Render
-        reconnectionDelay: isRenderConnection ? 5000 : 3000, // Longer initial delay for Render
-        reconnectionDelayMax: 15000, // Increased from 10000 to 15000
-        timeout: isRenderConnection ? 30000 : 20000, // Longer timeout for Render
+        reconnectionAttempts: isRenderConnection ? 15 : 10,
+        reconnectionDelay: isRenderConnection ? 5000 : 3000,
+        reconnectionDelayMax: 15000,
+        timeout: isRenderConnection ? 60000 : 30000, // Increased timeout
         transports: ['websocket', 'polling'],
-        // Explicitly set secure to true for HTTPS connections
         secure: serverUrl.startsWith('https'),
-        // Remove any path from the URL to avoid issues
         path: '/socket.io/',
         autoConnect: true,
-        // Add debug mode to see more detailed logs
         debug: true,
         forceNew: false,
-        // Add ping options to prevent timeout
-        pingTimeout: isRenderConnection ? 60000 : 30000, // Longer ping timeout for Render
-        pingInterval: isRenderConnection ? 20000 : 25000, // More frequent pings for Render
+        pingTimeout: isRenderConnection ? 60000 : 30000,
+        pingInterval: isRenderConnection ? 20000 : 25000,
+        // Add new configurations for better reliability
+        reconnection: true,
+        randomizationFactor: 0.5,
+        // Enable compression
+        perMessageDeflate: true,
+        // Connection stabilization
+        rememberUpgrade: true,
+        upgrade: true,
+        // Retry strategy
+        retries: 5,
+        // Buffer optimization
+        maxHttpBufferSize: 1e6,
+        // Transport options
+        transportOptions: {
+          polling: {
+            extraHeaders: {
+              'X-Client-Info': 'LogicLen Game Client'
+            }
+          }
+        }
       });
       
       console.log('Socket instance created with options:', {
@@ -66,33 +82,78 @@ export const MultiplayerProvider = ({ children }) => {
       if (isRenderConnection) {
         socketInstance.io.engine.on('transport_error', (error) => {
           console.error('Transport error:', error);
-          setTimeout(() => {
-            console.log('Attempting transport recovery after error');
-            socketInstance.io.engine.close();
-            socketInstance.connect();
-          }, 3000);
+          // Implement exponential backoff for reconnection
+          let retryCount = 0;
+          const maxRetries = 5;
+          const baseDelay = 1000;
+          
+          const attemptReconnection = () => {
+            if (retryCount < maxRetries) {
+              const delay = Math.min(baseDelay * Math.pow(2, retryCount), 15000);
+              console.log(`Attempting transport recovery after ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+              setTimeout(() => {
+                if (!socketInstance.connected) {
+                  socketInstance.io.engine.close();
+                  socketInstance.connect();
+                  retryCount++;
+                }
+              }, delay);
+            }
+          };
+          
+          attemptReconnection();
         });
       }
       
-      // Add some test events to diagnose
+      // Enhanced error handling
       socketInstance.io.on("error", (error) => {
         console.error("Socket.io manager error:", error);
         setConnectionError(`IO manager error: ${error.message}`);
         
-        // Add automatic reconnection logic
         if (error.message.includes('timeout')) {
           console.log('Attempting to reconnect after timeout...');
-          setTimeout(() => {
-            if (socketInstance && !socketInstance.connected) {
-              socketInstance.connect();
+          // Implement progressive delay for timeout reconnection
+          let timeoutRetryCount = 0;
+          const maxTimeoutRetries = 3;
+          
+          const attemptTimeoutRecovery = () => {
+            if (timeoutRetryCount < maxTimeoutRetries && !socketInstance.connected) {
+              const delay = 3000 * (timeoutRetryCount + 1);
+              console.log(`Attempting timeout recovery in ${delay}ms (attempt ${timeoutRetryCount + 1}/${maxTimeoutRetries})`);
+              setTimeout(() => {
+                if (!socketInstance.connected) {
+                  socketInstance.connect();
+                  timeoutRetryCount++;
+                }
+              }, delay);
             }
-          }, 3000);
+          };
+          
+          attemptTimeoutRecovery();
         }
       });
       
-      socketInstance.io.on("reconnect_attempt", (attempt) => {
-        console.log(`Socket.io reconnect attempt #${attempt}`);
+      // Add connection quality monitoring
+      let connectionQualityInterval;
+      socketInstance.on('connect', () => {
+        connectionQualityInterval = setInterval(() => {
+          const start = Date.now();
+          socketInstance.volatile.emit('ping_test', null, () => {
+            const latency = Date.now() - start;
+            console.log(`Current connection latency: ${latency}ms`);
+            if (latency > 1000) {
+              console.warn('High latency detected');
+            }
+          });
+        }, 30000);
       });
+      
+      socketInstance.on('disconnect', () => {
+        if (connectionQualityInterval) {
+          clearInterval(connectionQualityInterval);
+        }
+      });
+      
     } catch (error) {
       console.error('Error creating socket connection:', error);
       setConnectionError(`Failed to create socket connection: ${error.message}`);
