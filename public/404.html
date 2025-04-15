@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found - Logic Length</title>
+  <script>
+    // Redirect all unknown routes to the React app
+    // This allows React Router to handle the route
+    var path = window.location.pathname;
+    var redirectURL = window.location.origin + '/#' + path;
+    window.location.replace(redirectURL);
+  </script>
+  <style>
+    body {
+      background-color: #0c0124;
+      color: white;
+      font-family: 'Roboto', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      padding: 20px;
+    }
+    h1 {
+      color: #b69fff;
+      font-size: 2rem;
+    }
+    p {
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Redirecting...</h1>
+    <p>If you are not redirected automatically, <a href="/" style="color: #b69fff;">click here</a> to go to the home page.</p>
+  </div>
+</body>
+</html> 
