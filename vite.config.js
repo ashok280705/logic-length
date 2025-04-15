@@ -25,10 +25,15 @@ export default defineConfig({
       output: {
         manualChunks: undefined
       }
-    }
+    },
+    // Ensure assets are referenced with relative paths
+    assetsDir: 'assets',
+    assetsInlineLimit: 4096,
+    // Create 200.html file for SPA routing
+    copyPublicDir: true
   },
-  // Add base URL configuration
-  base: '/',
+  // Use relative paths for assets
+  base: './',
   // Configure preview server
   preview: {
     port: 3000,
