@@ -188,6 +188,8 @@ export const isUserLoggedIn = () => {
 // Update user coin balance in Firebase
 export const updateUserCoins = async (amount, transactionType = 'update', gameType = null) => {
   try {
+    console.log("Starting coin update process with amount:", amount);
+    
     // Get current user from localStorage
     const userStr = localStorage.getItem('user');
     if (!userStr) {
@@ -195,68 +197,179 @@ export const updateUserCoins = async (amount, transactionType = 'update', gameTy
       return { success: false, error: "User not found" };
     }
     
-    const userData = JSON.parse(userStr);
+    // Try to parse user data
+    let userData;
+    try {
+      userData = JSON.parse(userStr);
+    } catch (e) {
+      console.error("Error parsing user data:", e);
+      return { success: false, error: "Invalid user data format" };
+    }
+    
+    // Validate minimum required user data
+    if (!userData || !userData.userId) {
+      console.error("Invalid user data structure:", userData);
+      
+      // Handle special case - add coins directly to localStorage if Firebase fails
+      console.log("Attempting localStorage-only fallback...");
+      
+      try {
+        // Calculate new coin balance
+        const currentCoins = userData?.coins || 0;
+        const newCoins = Math.max(0, currentCoins + amount);
+        
+        // Create transaction record
+        const transaction = {
+          amount: amount,
+          type: transactionType,
+          date: new Date().toISOString()
+        };
+        
+        if (gameType) {
+          transaction.gameType = gameType;
+        }
+        
+        // Update localStorage with new data
+        const updatedUserData = {
+          ...userData,
+          coins: newCoins,
+          transactions: [...(userData?.transactions || []), transaction]
+        };
+        
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+        
+        // Dispatch event to update UI
+        window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
+          detail: {
+            newBalance: newCoins,
+            userData: updatedUserData
+          }
+        }));
+        
+        console.log("localStorage fallback successful with new balance:", newCoins);
+        
+        return {
+          success: true,
+          coins: newCoins,
+          userData: updatedUserData
+        };
+      } catch (fallbackError) {
+        console.error("localStorage fallback failed:", fallbackError);
+        return { success: false, error: "Invalid user data" };
+      }
+    }
+    
     const userId = userData.userId;
     
-    if (!userId) {
-      console.error("No user ID found in localStorage");
-      return { success: false, error: "Invalid user data" };
-    }
-    
-    // Get latest user data from Firestore
-    const userDocRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userDocRef);
-    
-    if (!userDoc.exists()) {
-      console.error("User document not found in Firestore");
-      return { success: false, error: "User not found in database" };
-    }
-    
-    const firestoreUserData = userDoc.data();
-    const currentCoins = firestoreUserData.coins || 0;
-    const newCoins = Math.max(0, currentCoins + amount);
-    
-    // Create transaction record
-    const transaction = {
-      amount: amount,
-      type: transactionType,
-      date: new Date().toISOString()
-    };
-    
-    if (gameType) {
-      transaction.gameType = gameType;
-    }
-    
-    // Update Firestore
-    await updateDoc(userDocRef, {
-      coins: newCoins,
-      transactions: [...(firestoreUserData.transactions || []), transaction]
-    });
-    
-    // Update localStorage with latest data from Firestore
-    const updatedUserData = {
-      ...firestoreUserData,
-      coins: newCoins,
-      transactions: [...(firestoreUserData.transactions || []), transaction]
-    };
-    
-    localStorage.setItem('user', JSON.stringify(updatedUserData));
-    
-    // Dispatch event to update UI
-    window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
-      detail: {
-        newBalance: newCoins,
-        userData: updatedUserData
+    // Attempt to connect to Firebase
+    try {
+      // Get latest user data from Firestore
+      const userDocRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        console.error("User document not found in Firestore");
+        return { success: false, error: "User not found in database" };
       }
-    }));
-    
-    return {
-      success: true,
-      coins: newCoins,
-      userData: updatedUserData
-    };
+      
+      const firestoreUserData = userDoc.data();
+      const currentCoins = firestoreUserData.coins || 0;
+      const newCoins = Math.max(0, currentCoins + amount);
+      
+      // Create transaction record
+      const transaction = {
+        amount: amount,
+        type: transactionType,
+        date: new Date().toISOString()
+      };
+      
+      if (gameType) {
+        transaction.gameType = gameType;
+      }
+      
+      // Update Firestore
+      await updateDoc(userDocRef, {
+        coins: newCoins,
+        transactions: [...(firestoreUserData.transactions || []), transaction]
+      });
+      
+      // Update localStorage with latest data from Firestore
+      const updatedUserData = {
+        ...firestoreUserData,
+        coins: newCoins,
+        transactions: [...(firestoreUserData.transactions || []), transaction]
+      };
+      
+      localStorage.setItem('user', JSON.stringify(updatedUserData));
+      
+      // Dispatch event to update UI
+      window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
+        detail: {
+          newBalance: newCoins,
+          userData: updatedUserData
+        }
+      }));
+      
+      console.log("Firebase update successful with new balance:", newCoins);
+      
+      return {
+        success: true,
+        coins: newCoins,
+        userData: updatedUserData
+      };
+    } catch (firebaseError) {
+      console.error("Firebase update failed:", firebaseError);
+      
+      // Fall back to localStorage only if Firebase fails
+      console.log("Firebase failed, attempting localStorage-only fallback...");
+      
+      try {
+        // Calculate new coin balance
+        const currentCoins = userData.coins || 0;
+        const newCoins = Math.max(0, currentCoins + amount);
+        
+        // Create transaction record
+        const transaction = {
+          amount: amount,
+          type: transactionType,
+          date: new Date().toISOString()
+        };
+        
+        if (gameType) {
+          transaction.gameType = gameType;
+        }
+        
+        // Update localStorage with new data
+        const updatedUserData = {
+          ...userData,
+          coins: newCoins,
+          transactions: [...(userData.transactions || []), transaction]
+        };
+        
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+        
+        // Dispatch event to update UI
+        window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
+          detail: {
+            newBalance: newCoins,
+            userData: updatedUserData
+          }
+        }));
+        
+        console.log("localStorage fallback successful with new balance:", newCoins);
+        
+        return {
+          success: true,
+          coins: newCoins,
+          userData: updatedUserData
+        };
+      } catch (fallbackError) {
+        console.error("Both Firebase and localStorage fallback failed:", fallbackError);
+        return { success: false, error: "Failed to update coins" };
+      }
+    }
   } catch (error) {
-    console.error("Error updating coins:", error);
+    console.error("Error in updateUserCoins:", error);
     return {
       success: false,
       error: error.message

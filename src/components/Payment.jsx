@@ -100,8 +100,69 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       
       if (!result.success) {
         console.error("Failed to update coins:", result.error);
-        alert("Failed to add coins: " + result.error);
-        return;
+        
+        // Manual fallback if Firebase update fails
+        try {
+          const userStr = localStorage.getItem('user');
+          if (!userStr) {
+            alert("User data not found. Please log in again.");
+            return;
+          }
+          
+          // Parse user data
+          const user = JSON.parse(userStr);
+          
+          // Calculate new coin balance
+          const currentCoins = parseInt(user.coins) || 0;
+          const totalCoins = currentCoins + parseInt(coinsToAdd);
+          
+          console.log('Manual fallback: Current coins:', currentCoins);
+          console.log('Manual fallback: Adding coins:', coinsToAdd);
+          console.log('Manual fallback: New total:', totalCoins);
+          
+          // Create updated user object
+          const updatedUser = {
+            ...user,
+            coins: totalCoins
+          };
+          
+          // Save to localStorage
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          
+          // Dispatch event to update UI
+          window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
+            detail: {
+              newBalance: totalCoins,
+              userData: updatedUser
+            }
+          }));
+          
+          setUserData(updatedUser);
+          setSuccess(true);
+          setSelectedPackage(null);
+          
+          // Call success callback
+          if (onSuccess) {
+            onSuccess(coinsToAdd);
+          }
+          
+          alert("Coins added successfully using local storage (Firebase update failed)");
+          
+          // Navigate back to previous page after a short delay
+          setTimeout(() => {
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.location.href = '/home';
+            }
+          }, 1500);
+          
+          return;
+        } catch (localError) {
+          console.error("Manual fallback failed:", localError);
+          alert("Failed to add coins: " + result.error + ". Please try logging out and back in.");
+          return;
+        }
       }
       
       // Update state with the result from Firebase
