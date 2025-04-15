@@ -94,16 +94,33 @@ const MultiplayerTicTacToe = ({ cost, deductCoins, user }) => {
 
   // Function to start matchmaking
   const startMatchmaking = () => {
-    // Get latest user data before joining matchmaking
-    const userData = getLatestUserData();
+    // Force refresh user data from localStorage before starting matchmaking
+    const userStr = localStorage.getItem('user');
+    let userData;
+    
+    if (userStr) {
+      try {
+        userData = JSON.parse(userStr);
+        setUserCoins(userData.coins || 0);
+      } catch (e) {
+        console.error("Error parsing user data:", e);
+        alert("There was an error loading your coin balance. Please refresh the page.");
+        return;
+      }
+    } else {
+      alert("User data not found. Please log in again.");
+      navigate('/login');
+      return;
+    }
     
     // Check if user has enough coins
-    if (userData.coins < cost) {
+    if ((userData.coins || 0) < cost) {
       alert(`Not enough coins! You need ${cost} coins to play. Please top up your balance.`);
       navigate('/payment');
       return;
     }
     
+    console.log("Starting matchmaking with coins:", userData.coins);
     joinMatchmaking('tictactoe');
   };
   

@@ -268,7 +268,22 @@ export const MultiplayerProvider = ({ children }) => {
   // Helper to get user info from localStorage
   const getUserInfo = () => {
     const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : { userId: 'guest', username: 'Guest' };
+    let user = { userId: 'guest', username: 'Guest', coins: 0 };
+    
+    if (userStr) {
+      try {
+        const parsedUser = JSON.parse(userStr);
+        user = { 
+          ...parsedUser,
+          userId: parsedUser.userId || parsedUser._id || parsedUser.id || 'guest',
+          username: parsedUser.username || parsedUser.name || 'Guest',
+          coins: parsedUser.coins || 0
+        };
+      } catch (e) {
+        console.error("Error parsing user data from localStorage:", e);
+      }
+    }
+    
     return user;
   };
   
@@ -279,7 +294,9 @@ export const MultiplayerProvider = ({ children }) => {
       return;
     }
     
+    // Force refresh user data before joining
     const user = getUserInfo();
+    console.log("Joining matchmaking with user:", user);
     
     socket.emit('join_matchmaking', {
       gameType,

@@ -30,6 +30,31 @@ const Navbar = ({ onLogout, user }) => {
     { id: 8, name: 'Multiplayer Chess', image: 'multiplayer-chess.webp', coins: 70, category: 'strategy' },
   ];
 
+  // Load user data on mount and ensure it's refreshed on every render
+  useEffect(() => {
+    loadUserData();
+    
+    // Poll localStorage for changes every 1 second to ensure consistent data
+    const intervalId = setInterval(() => {
+      loadUserData();
+    }, 1000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  // Separate function to load user data from localStorage
+  const loadUserData = () => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setCurrentUser(userData);
+      } catch (err) {
+        console.error("Error parsing user data from localStorage", err);
+      }
+    }
+  };
+
   // Listen for coin balance updates
   useEffect(() => {
     const handleCoinUpdate = (event) => {
@@ -42,15 +67,7 @@ const Navbar = ({ onLogout, user }) => {
       }
       
       // Otherwise, get the updated user from localStorage to ensure we have the latest data
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        try {
-          const updatedUser = JSON.parse(userStr);
-          setCurrentUser(updatedUser);
-        } catch (err) {
-          console.error("Error parsing user data from localStorage", err);
-        }
-      }
+      loadUserData();
     };
     
     // Add event listener
