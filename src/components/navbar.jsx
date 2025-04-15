@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Payment from "./Payment";
-import { logoutUser, getUserDataFromFirebase } from "../services/authService";
+import { logoutUser, getUserDataFromFirebase } from "../services/authService.js";
 
 const Navbar = ({ onLogout, user }) => {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useMultiplayer } from './MultiplayerContext';
 import { useNavigate } from 'react-router-dom';
-import { getUserDataFromFirebase, updateUserCoins } from '../../services/authService';
+import { getUserDataFromFirebase, updateUserCoins } from '../../services/authService.js';
 
 const MultiplayerTicTacToe = ({ cost, deductCoins, user }) => {
   const navigate = useNavigate();

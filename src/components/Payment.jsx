@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateUserCoins } from '../services/authService';
+import { updateUserCoins } from '../services/authService.js';
 
 const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
   const [selectedPackage, setSelectedPackage] = useState(null);
