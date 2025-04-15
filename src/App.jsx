@@ -1,25 +1,26 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import React from "react";
+import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./components/navbar.jsx";
 import Main_bar from "./components/main_bar.jsx";
-import Login from "./components/login.jsx"; // Ensure correct capitalization
-import Game1 from "./pages/game1.jsx"; // Import the Game1 component
+import Login from "./components/login.jsx";
+import Game1 from "./pages/game1.jsx";
 import Game3 from "./pages/game3.jsx";
-import Game4 from "./pages/game4.jsx"; // Import the Game4 component for snakes
-import Game5 from "./pages/game5.jsx"; // Import the Game5 component for mines-plinko
-import Game6 from "./pages/game6.jsx"; // Import the Game6 component for snail race
-import Game7 from "./pages/game7.jsx"; // Import the Game7 component for plinko
-import Game8 from "./pages/game8.jsx"; // Import the Game8 component for aviator
+import Game4 from "./pages/game4.jsx";
+import Game5 from "./pages/game5.jsx";
+import Game6 from "./pages/game6.jsx";
+import Game7 from "./pages/game7.jsx";
+import Game8 from "./pages/game8.jsx";
 import Payment from "./components/Payment.jsx";
-import MultiplayerGames from "./pages/MultiplayerGames.jsx"; // Import new page
-import SinglePlayerGames from "./pages/SinglePlayerGames.jsx"; // Import new page
-import GameHistory from "./pages/GameHistory.jsx"; // Import Game History page
-import TransactionHistory from "./pages/TransactionHistory.jsx"; // Import Transaction History page
-import ProfileSettings from "./pages/ProfileSettings.jsx"; // Import Profile Settings page
-import ErrorBoundary from "./components/ErrorBoundary.jsx"; // Import Error Boundary
-import axios from "axios";
+import MultiplayerGames from "./pages/MultiplayerGames.jsx";
+import SinglePlayerGames from "./pages/SinglePlayerGames.jsx";
+import GameHistory from "./pages/GameHistory.jsx";
+import TransactionHistory from "./pages/TransactionHistory.jsx";
+import ProfileSettings from "./pages/ProfileSettings.jsx";
+import UserProfile from "./components/UserProfile.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { MultiplayerProvider } from "./components/multiplayer/MultiplayerContext.jsx";
 import MultiplayerTicTacToe from "./components/multiplayer/MultiplayerTicTacToe.jsx";
+import { useAuth } from "./config/AuthContext.jsx";
 
 // Game coin requirements
 const GAME_COSTS = {
@@ -35,109 +36,20 @@ const GAME_COSTS = {
 };
 
 const App = () => {
-  const [user, setUser] = useState(null);
-  const [activeZone, setActiveZone] = useState('coin'); // Default to coin zone for direct payments
+  const { currentUser, userProfile } = useAuth();
+  const navigate = useNavigate();
 
-  // Fetch stored user info from localStorage on component mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser)); // If user exists in localStorage, set it in state
-    }
-    
-    // Initialize zone mode if not present
-    const storedZone = localStorage.getItem('activeZone');
-    if (storedZone) {
-      setActiveZone(storedZone);
-    } else {
-      // Default to coin zone if not set
-      localStorage.setItem('activeZone', 'coin');
-    }
-  }, []);
-
-  // Logout function: Clears user session
-  const handleLogout = (updatedUser = null) => {
-    if (updatedUser) {
-      // If updatedUser is provided, update the user state instead of logging out
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-    } else {
-      // If no updatedUser, perform normal logout
-      
-      // Before clearing localStorage, save any important user data to database
-      if (user && user.id) {
-        try {
-          console.log("Saving user data before logout", user.coins);
-          // This could be an async API call to update user data in the database
-          axios.post('/api/auth/update-user', {
-            userId: user.id,
-            coins: user.coins,
-            // Add any other fields that need to be saved
-          }).catch(error => {
-            console.error("Error saving user data before logout:", error);
-          });
-        } catch (error) {
-          console.error("Error in pre-logout data save:", error);
-        }
-      }
-      
-      // Now clear local state
-      localStorage.removeItem("user");
-      setUser(null);
-    }
+  // Check if user has enough coins for a game
+  const hasEnoughCoins = (gameType) => {
+    if (!userProfile) return false;
+    return (userProfile.balance || 0) >= GAME_COSTS[gameType];
   };
 
-  const handlePaymentSuccess = (coins) => {
-    // Get current user from localStorage
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const currentUser = JSON.parse(userStr);
-      const updatedUser = { 
-        ...currentUser, 
-        coins: (parseInt(currentUser.coins) || 0) + parseInt(coins) 
-      };
-      
-      // Update both state and localStorage
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      console.log('Updated user coins:', updatedUser.coins);
-    }
-  };
-
-  // Function to check if user has enough coins for a game
-  const hasEnoughCoins = (gamePath) => {
-    const gameKey = gamePath.replace('/', '');
-    const requiredCoins = GAME_COSTS[gameKey] || 0;
-    
-    return user && parseInt(user.coins || 0) >= requiredCoins;
-  };
-
-  // Function to deduct coins when starting a game
-  const deductCoins = (gamePath) => {
-    if (!user) return false;
-    
-    const gameKey = gamePath.replace('/', '');
-    const requiredCoins = GAME_COSTS[gameKey] || 0;
-    
-    if (parseInt(user.coins || 0) >= requiredCoins) {
-      const updatedUser = {
-        ...user,
-        coins: parseInt(user.coins) - requiredCoins
-      };
-      
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      return true;
-    }
-    
-    return false;
-  };
-
-  // Handle zone change
-  const handleZoneChange = (zone) => {
-    setActiveZone(zone);
-    localStorage.setItem('activeZone', zone);
+  // Deduct coins when playing a game
+  const deductCoins = async (gameType) => {
+    // This will be implemented using the userService functions
+    // For now we'll just return true
+    return true;
   };
 
   return (
@@ -145,25 +57,40 @@ const App = () => {
       <MultiplayerProvider>
         <Routes>
           {/* If there's no user, render Login page */}
-          <Route path="/" element={!user ? <Login setUser={setUser} isLogin={true} /> : <Navigate to="/home" />} />
+          <Route path="/" element={!currentUser ? <Login /> : <Navigate to="/home" />} />
           
           {/* Add explicit login route */}
-          <Route path="/login" element={!user ? <Login setUser={setUser} isLogin={true} /> : <Navigate to="/home" />} />
+          <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/home" />} />
           
           {/* Add explicit register route */}
-          <Route path="/register" element={!user ? <Login setUser={setUser} isLogin={false} /> : <Navigate to="/home" />} />
+          <Route path="/register" element={!currentUser ? <Login isLogin={false} /> : <Navigate to="/home" />} />
+
+          {/* Add profile route */}
+          <Route
+            path="/profile"
+            element={
+              currentUser ? (
+                <>
+                  <Navbar />
+                  <UserProfile />
+                </>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
           {/* Protected Home Page */}
           <Route
             path="/home"
             element={
-              user ? (
+              currentUser ? (
                 <>
-                  <Navbar onLogout={handleLogout} user={user} />
-                  <Main_bar gameCosts={GAME_COSTS} onZoneChange={handleZoneChange} initialZone={activeZone} />
+                  <Navbar />
+                  <Main_bar gameCosts={GAME_COSTS} />
                 </>
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             }
           />
@@ -172,15 +99,15 @@ const App = () => {
           <Route
             path="/game-history"
             element={
-              user ? (
+              currentUser ? (
                 <>
-                  <Navbar onLogout={handleLogout} user={user} />
+                  <Navbar />
                   <ErrorBoundary>
-                    <GameHistory user={user} />
+                    <GameHistory />
                   </ErrorBoundary>
                 </>
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             }
           />
@@ -189,15 +116,15 @@ const App = () => {
           <Route
             path="/transaction-history"
             element={
-              user ? (
+              currentUser ? (
                 <>
-                  <Navbar onLogout={handleLogout} user={user} />
+                  <Navbar />
                   <ErrorBoundary>
-                    <TransactionHistory user={user} />
+                    <TransactionHistory />
                   </ErrorBoundary>
                 </>
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             }
           />
@@ -206,13 +133,13 @@ const App = () => {
           <Route
             path="/profile-settings"
             element={
-              user ? (
+              currentUser ? (
                 <>
-                  <Navbar onLogout={handleLogout} user={user} />
-                  <ProfileSettings user={user} />
+                  <Navbar />
+                  <ProfileSettings />
                 </>
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             }
           />
@@ -221,9 +148,9 @@ const App = () => {
           <Route
             path="/multiplayer-games"
             element={
-              user ? (
+              currentUser ? (
                 <>
-                  <Navbar onLogout={handleLogout} user={user} />
+                  <Navbar />
                   <MultiplayerGames 
                     games={[
                       { name: "Chess", path: "/chess", cost: GAME_COSTS.chess },
@@ -233,7 +160,7 @@ const App = () => {
                   />
                 </>
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             }
           />
@@ -242,9 +169,9 @@ const App = () => {
           <Route
             path="/single-player-games"
             element={
-              user ? (
+              currentUser ? (
                 <>
-                  <Navbar onLogout={handleLogout} user={user} />
+                  <Navbar />
                   <SinglePlayerGames 
                     games={[
                       { name: "Stack-Game", path: "/snakes", cost: GAME_COSTS.snakes },
@@ -254,7 +181,7 @@ const App = () => {
                   />
                 </>
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             }
           />
@@ -263,14 +190,14 @@ const App = () => {
           <Route 
             path="/tictactoe" 
             element={
-              user ? (
+              currentUser ? (
                 hasEnoughCoins('tictactoe') ? (
-                  <Game1 cost={GAME_COSTS.tictactoe} deductCoins={() => deductCoins('tictactoe')} user={user} onLogout={handleLogout} />
+                  <Game1 cost={GAME_COSTS.tictactoe} deductCoins={() => deductCoins('tictactoe')} />
                 ) : (
                   <Navigate to="/payment" />
                 )
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             } 
           />
@@ -278,14 +205,14 @@ const App = () => {
           <Route 
             path="/chess" 
             element={
-              user ? (
+              currentUser ? (
                 hasEnoughCoins('chess') ? (
-                  <Game3 cost={GAME_COSTS.chess} deductCoins={() => deductCoins('chess')} user={user} onLogout={handleLogout} />
+                  <Game3 cost={GAME_COSTS.chess} deductCoins={() => deductCoins('chess')} />
                 ) : (
                   <Navigate to="/payment" />
                 )
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             } 
           />
@@ -293,14 +220,14 @@ const App = () => {
           <Route 
             path="/snakes" 
             element={
-              user ? (
+              currentUser ? (
                 hasEnoughCoins('snakes') ? (
-                  <Game4 cost={GAME_COSTS.snakes} deductCoins={() => deductCoins('snakes')} user={user} onLogout={handleLogout} />
+                  <Game4 cost={GAME_COSTS.snakes} deductCoins={() => deductCoins('snakes')} />
                 ) : (
                   <Navigate to="/payment" />
                 )
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             } 
           />
@@ -308,14 +235,14 @@ const App = () => {
           <Route 
             path="/rock-paper-scissors" 
             element={
-              user ? (
+              currentUser ? (
                 hasEnoughCoins('rock-paper-scissors') ? (
-                  <Game5 cost={GAME_COSTS['rock-paper-scissors']} deductCoins={() => deductCoins('rock-paper-scissors')} user={user} onLogout={handleLogout} />
+                  <Game5 cost={GAME_COSTS['rock-paper-scissors']} deductCoins={() => deductCoins('rock-paper-scissors')} />
                 ) : (
                   <Navigate to="/payment" />
                 )
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             } 
           />
@@ -323,14 +250,14 @@ const App = () => {
           <Route 
             path="/snail-race" 
             element={
-              user ? (
+              currentUser ? (
                 hasEnoughCoins('snail-race') ? (
-                  <Game6 cost={GAME_COSTS['snail-race']} deductCoins={() => deductCoins('snail-race')} user={user} onLogout={handleLogout} />
+                  <Game6 cost={GAME_COSTS['snail-race']} deductCoins={() => deductCoins('snail-race')} />
                 ) : (
                   <Navigate to="/payment" />
                 )
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             } 
           />
@@ -338,14 +265,14 @@ const App = () => {
           <Route 
             path="/game7" 
             element={
-              user ? (
+              currentUser ? (
                 hasEnoughCoins('game7') ? (
-                  <Game7 cost={GAME_COSTS.game7} deductCoins={() => deductCoins('game7')} user={user} onLogout={handleLogout} />
+                  <Game7 cost={GAME_COSTS.game7} deductCoins={() => deductCoins('game7')} />
                 ) : (
                   <Navigate to="/payment" />
                 )
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             } 
           />
@@ -353,14 +280,14 @@ const App = () => {
           <Route 
             path="/game8" 
             element={
-              user ? (
+              currentUser ? (
                 hasEnoughCoins('game8') ? (
-                  <Game8 cost={GAME_COSTS.game8} deductCoins={() => deductCoins('game8')} user={user} onLogout={handleLogout} />
+                  <Game8 cost={GAME_COSTS.game8} deductCoins={() => deductCoins('game8')} />
                 ) : (
                   <Navigate to="/payment" />
                 )
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             } 
           />
@@ -368,17 +295,17 @@ const App = () => {
           <Route
             path="/payment"
             element={
-              user ? (
+              currentUser ? (
                 <>
-                  <Navbar onLogout={handleLogout} user={user} />
+                  <Navbar />
                   <Payment 
-                    key={`payment-page-${activeZone}`} 
-                    onSuccess={handlePaymentSuccess} 
-                    zoneMode={activeZone} 
+                    key={`payment-page-${userProfile.activeZone}`} 
+                    onSuccess={userProfile.handlePaymentSuccess} 
+                    zoneMode={userProfile.activeZone} 
                   />
                 </>
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             }
           />
@@ -387,19 +314,19 @@ const App = () => {
           <Route 
             path="/multiplayer-tictactoe" 
             element={
-              user ? (
+              currentUser ? (
                 hasEnoughCoins('multiplayer-tictactoe') ? (
                   <>
-                    <Navbar onLogout={handleLogout} user={user} />
+                    <Navbar />
                     <ErrorBoundary>
-                      <MultiplayerTicTacToe cost={GAME_COSTS['multiplayer-tictactoe']} deductCoins={() => deductCoins('multiplayer-tictactoe')} user={user} />
+                      <MultiplayerTicTacToe cost={GAME_COSTS['multiplayer-tictactoe']} deductCoins={() => deductCoins('multiplayer-tictactoe')} />
                     </ErrorBoundary>
                   </>
                 ) : (
                   <Navigate to="/payment" />
                 )
               ) : (
-                <Navigate to="/" />
+                <Navigate to="/login" />
               )
             } 
           />
