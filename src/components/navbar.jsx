@@ -35,11 +35,21 @@ const Navbar = ({ onLogout, user }) => {
     const handleCoinUpdate = (event) => {
       console.log("Coin balance updated event received", event.detail);
       
-      // Get the updated user from localStorage to ensure we have the latest data
+      if (event.detail.userData) {
+        // If the event includes full user data, use it directly
+        setCurrentUser(event.detail.userData);
+        return;
+      }
+      
+      // Otherwise, get the updated user from localStorage to ensure we have the latest data
       const userStr = localStorage.getItem('user');
       if (userStr) {
-        const updatedUser = JSON.parse(userStr);
-        setCurrentUser(updatedUser);
+        try {
+          const updatedUser = JSON.parse(userStr);
+          setCurrentUser(updatedUser);
+        } catch (err) {
+          console.error("Error parsing user data from localStorage", err);
+        }
       }
     };
     

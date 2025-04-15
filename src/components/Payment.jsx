@@ -143,12 +143,20 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       
       // Broadcast coin update event to refresh all components
       window.dispatchEvent(new CustomEvent('coinBalanceUpdated', { 
-        detail: { newBalance: totalCoins } 
+        detail: { 
+          newBalance: totalCoins,
+          userData: updatedUser
+        } 
       }));
       
       // Force a reload of the main page to update all coin displays
       setTimeout(() => {
-        window.location.reload();
+        // Instead of full page reload, navigate back to previous page
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = '/home';
+        }
       }, 1500);
       
     } catch (error) {

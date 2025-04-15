@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useMultiplayer } from './MultiplayerContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,6 +22,40 @@ const MultiplayerTicTacToe = ({ cost, deductCoins, user }) => {
   
   const [symbol, setSymbol] = useState(null); // 'X' or 'O'
   const [coinsDeducted, setCoinsDeducted] = useState(false);
+  const [userCoins, setUserCoins] = useState(user?.coins || 0);
+  
+  // Function to get the latest user data from localStorage
+  const getLatestUserData = useCallback(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setUserCoins(userData.coins || 0);
+        return userData;
+      } catch (e) {
+        console.error("Error parsing user data:", e);
+      }
+    }
+    return user || { coins: 0 };
+  }, [user]);
+  
+  // Update user data when component mounts or when localStorage changes
+  useEffect(() => {
+    getLatestUserData();
+    
+    // Listen for storage changes (when coins are updated in another tab/component)
+    const handleStorageChange = () => {
+      getLatestUserData();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('coinBalanceUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('coinBalanceUpdated', handleStorageChange);
+    };
+  }, [getLatestUserData]);
   
   // Set the player's symbol when the game starts
   useEffect(() => {
@@ -30,16 +64,96 @@ const MultiplayerTicTacToe = ({ cost, deductCoins, user }) => {
       // This is a simple way to determine symbols based on turn order
       setSymbol(isMyTurn ? 'X' : 'O');
       
+      // Get latest user data before deducting coins
+      const userData = getLatestUserData();
+      
+      // Check if user has enough coins
+      if (userData.coins < cost) {
+        alert(`Not enough coins! You need ${cost} coins to play. Please top up your balance.`);
+        leaveGame();
+        navigate('/payment');
+        return;
+      }
+      
       // Deduct coins when match is found
-      deductCoins();
-      setCoinsDeducted(true);
+      const success = deductCoins();
+      if (success) {
+        setCoinsDeducted(true);
+        
+        // Update coins in localStorage to keep it consistent
+        const updatedUserData = {...userData, coins: userData.coins - cost};
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+        setUserCoins(updatedUserData.coins);
+      } else {
+        alert('Failed to deduct coins. Leaving game.');
+        leaveGame();
+        navigate('/payment');
+      }
     }
-  }, [currentGame, gameState, isMyTurn, coinsDeducted, deductCoins]);
+  }, [currentGame, gameState, isMyTurn, coinsDeducted, deductCoins, cost, navigate, leaveGame, getLatestUserData]);
 
   // Function to start matchmaking
   const startMatchmaking = () => {
+    // Get latest user data before joining matchmaking
+    const userData = getLatestUserData();
+    
+    // Check if user has enough coins
+    if (userData.coins < cost) {
+      alert(`Not enough coins! You need ${cost} coins to play. Please top up your balance.`);
+      navigate('/payment');
+      return;
+    }
+    
     joinMatchmaking('tictactoe');
   };
+  
+  // Update coins when game ends
+  useEffect(() => {
+    if (gameResult && gameResult.gameOver) {
+      // If game resulted in win or draw, update coins in localStorage
+      if ((gameResult.winner === symbol) || gameResult.draw) {
+        // Get latest user data
+        const userData = getLatestUserData();
+        
+        // Calculate reward (1.5x for win, 0.5x for draw)
+        const reward = gameResult.winner === symbol ? cost * 1.5 : (gameResult.draw ? cost * 0.5 : 0);
+        const roundedReward = Math.floor(reward);
+        
+        if (roundedReward > 0) {
+          // Update coins in localStorage
+          const updatedCoins = (userData.coins || 0) + roundedReward;
+          const updatedUserData = {
+            ...userData,
+            coins: updatedCoins,
+            transactions: [
+              ...(userData.transactions || []),
+              {
+                amount: roundedReward,
+                type: 'game_reward',
+                gameType: 'tictactoe',
+                result: gameResult.winner === symbol ? 'win' : 'draw',
+                date: new Date().toISOString()
+              }
+            ]
+          };
+          
+          localStorage.setItem('user', JSON.stringify(updatedUserData));
+          setUserCoins(updatedCoins);
+          
+          // Dispatch event for other components
+          window.dispatchEvent(new CustomEvent('coinBalanceUpdated', { 
+            detail: { 
+              newBalance: updatedCoins,
+              userData: updatedUserData
+            } 
+          }));
+          
+          // Show reward message
+          alert(`Congratulations! You earned ${roundedReward} coins!`);
+        }
+      }
+    }
+  }, [gameResult, symbol, cost, getLatestUserData]);
   
   // Reset coins deducted when leaving the game
   useEffect(() => {
