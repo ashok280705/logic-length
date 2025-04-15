@@ -141,6 +141,16 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
         onSuccess(coinsToAdd);
       }
       
+      // Broadcast coin update event to refresh all components
+      window.dispatchEvent(new CustomEvent('coinBalanceUpdated', { 
+        detail: { newBalance: totalCoins } 
+      }));
+      
+      // Force a reload of the main page to update all coin displays
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      
     } catch (error) {
       console.error('Error adding coins directly:', error);
       setError(error.message || 'Failed to add coins. Please try again.');
@@ -214,6 +224,16 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       if (onSuccess) {
         onSuccess(coinsToAdd);
       }
+      
+      // Broadcast coin update event to refresh all components
+      window.dispatchEvent(new CustomEvent('coinBalanceUpdated', { 
+        detail: { newBalance: totalCoins } 
+      }));
+      
+      // Force a reload of the main page to update all coin displays
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
       
     } catch (error) {
       console.error('Error verifying payment:', error);

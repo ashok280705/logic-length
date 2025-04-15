@@ -29,6 +29,28 @@ const Navbar = ({ onLogout, user }) => {
     { id: 8, name: 'Multiplayer Chess', image: 'multiplayer-chess.webp', coins: 70, category: 'strategy' },
   ];
 
+  // Listen for coin balance updates
+  useEffect(() => {
+    const handleCoinUpdate = (event) => {
+      console.log("Coin balance updated event received", event.detail);
+      
+      // Get the updated user from localStorage to ensure we have the latest data
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const updatedUser = JSON.parse(userStr);
+        setCurrentUser(updatedUser);
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('coinBalanceUpdated', handleCoinUpdate);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('coinBalanceUpdated', handleCoinUpdate);
+    };
+  }, []);
+
   // Handle search functionality
   const handleSearch = (e) => {
     const query = e.target.value;
