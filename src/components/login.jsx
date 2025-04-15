@@ -51,29 +51,73 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     const checkConnection = async () => {
       if (navigator.onLine) {
         try {
-          const response = await fetch("https://logic-3c2d8.firebaseio.com/.json?shallow=true", { 
-            method: 'HEAD',
-            timeout: 3000
-          });
-          setConnectionStatus(response.ok ? "online" : "offline");
+          // Try multiple endpoints to verify connection
+          const endpoints = [
+            "https://www.google.com/generate_204",
+            "https://www.cloudflare.com/cdn-cgi/trace",
+            "https://logic-3c2d8.firebaseio.com/.json?shallow=true"
+          ];
+          
+          // Consider online if any endpoint responds
+          let isOnline = false;
+          
+          for (const endpoint of endpoints) {
+            try {
+              const response = await fetch(endpoint, { 
+                method: 'HEAD',
+                timeout: 2000,
+                mode: 'no-cors' // This allows requests without CORS headers
+              });
+              
+              // If we get here, we have some kind of response (even opaque)
+              isOnline = true;
+              break;
+            } catch (endpointError) {
+              console.log(`Connection check to ${endpoint} failed:`, endpointError);
+              // Continue to next endpoint
+            }
+          }
+          
+          // Set status based on results
+          setConnectionStatus(isOnline ? "online" : "offline");
+          
+          // If online but Firebase specifically failed, still proceed 
+          // but might show warnings for Firebase-specific features
         } catch (error) {
-          console.log("Firebase connection check failed:", error);
-          setConnectionStatus("offline");
+          console.log("Connection check failed:", error);
+          // Default to online if navigator says we're online but fetch failed
+          // This handles cases where the network is working but endpoints are blocked
+          setConnectionStatus("online");
         }
       } else {
         setConnectionStatus("offline");
       }
     };
     
+    // Run initial check
     checkConnection();
     
     // Set up listeners for online/offline events
-    window.addEventListener("online", () => checkConnection());
-    window.addEventListener("offline", () => setConnectionStatus("offline"));
+    const handleOnline = () => {
+      console.log("Browser reports online status");
+      checkConnection();
+    };
+    
+    const handleOffline = () => {
+      console.log("Browser reports offline status");
+      setConnectionStatus("offline");
+    };
+    
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    
+    // Set a periodic check every 30 seconds
+    const intervalId = setInterval(checkConnection, 30000);
     
     return () => {
-      window.removeEventListener("online", checkConnection);
-      window.removeEventListener("offline", () => setConnectionStatus("offline"));
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -256,8 +300,9 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     setError("");
     
     try {
+      // Warn but proceed even if connection status is offline
       if (connectionStatus === "offline") {
-        throw new Error("You appear to be offline. Please check your internet connection and try again.");
+        console.warn("Attempting login while connection appears offline");
       }
       
       // Attempt login with Firebase
@@ -299,8 +344,9 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     setError("");
     
     try {
+      // Warn but proceed even if connection status is offline
       if (connectionStatus === "offline") {
-        throw new Error("You appear to be offline. Please check your internet connection and try again.");
+        console.warn("Attempting registration while connection appears offline");
       }
       
       // Register with Firebase
@@ -338,8 +384,9 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
     setError("");
     
     try {
+      // Warn but proceed even if connection status is offline
       if (connectionStatus === "offline") {
-        throw new Error("You appear to be offline. Please check your internet connection and try again.");
+        console.warn("Attempting Google sign-in while connection appears offline");
       }
       
       // Attempt Google sign-in
