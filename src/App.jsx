@@ -21,6 +21,7 @@ import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { MultiplayerProvider } from "./components/multiplayer/MultiplayerContext.jsx";
 import MultiplayerTicTacToe from "./components/multiplayer/MultiplayerTicTacToe.jsx";
 import { useAuth } from "./config/AuthContext.jsx";
+import { updateUserCoins } from "./services/authService.jsx";
 
 // Game coin requirements
 const GAME_COSTS = {
@@ -48,59 +49,20 @@ const App = () => {
   // Deduct coins when playing a game
   const deductCoins = async (gameType) => {
     try {
-      // Get fresh user data from localStorage to ensure we have the latest balance
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
-        console.error("No user data found in localStorage");
-        return false;
-      }
-      
-      let userData;
-      try {
-        userData = JSON.parse(userStr);
-      } catch (e) {
-        console.error("Error parsing user data:", e);
-        return false;
-      }
-      
       const cost = GAME_COSTS[gameType] || 0;
-      console.log(`Attempting to deduct ${cost} coins from balance:`, userData.coins);
+      console.log(`Attempting to deduct ${cost} coins for game ${gameType}`);
       
-      // Check if user has enough coins
-      if ((userData.coins || 0) < cost) {
-        console.error("Not enough coins to play");
+      // Use the updateUserCoins function from authService to update in Firebase
+      const result = await updateUserCoins(-cost, 'game_fee', gameType);
+      
+      if (!result.success) {
+        console.error("Failed to deduct coins:", result.error);
         alert(`Not enough coins! You need ${cost} coins to play.`);
         navigate('/payment');
         return false;
       }
       
-      // Update coins in localStorage
-      const updatedUserData = {
-        ...userData,
-        coins: Math.max(0, (userData.coins || 0) - cost),
-        transactions: [
-          ...(userData.transactions || []),
-          {
-            amount: -cost,
-            type: 'game_fee',
-            gameType: gameType,
-            date: new Date().toISOString()
-          }
-        ]
-      };
-      
-      // Save updated user data to localStorage
-      localStorage.setItem('user', JSON.stringify(updatedUserData));
-      console.log("Updated user data after deduction:", updatedUserData);
-      
-      // Dispatch an event to notify components about the coin balance update
-      window.dispatchEvent(new CustomEvent('coinBalanceUpdated', { 
-        detail: { 
-          newBalance: updatedUserData.coins,
-          userData: updatedUserData
-        } 
-      }));
-      
+      console.log("Successfully deducted coins:", result);
       return true;
     } catch (error) {
       console.error("Error deducting coins:", error);

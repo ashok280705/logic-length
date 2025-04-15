@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Payment from "./Payment";
-import { logoutUser } from "../services/authService";
+import { logoutUser, getUserDataFromFirebase } from "../services/authService";
 
 const Navbar = ({ onLogout, user }) => {
   const navigate = useNavigate();
@@ -32,15 +32,42 @@ const Navbar = ({ onLogout, user }) => {
 
   // Load user data on mount and ensure it's refreshed on every render
   useEffect(() => {
+    // Initial load from localStorage
     loadUserData();
     
-    // Poll localStorage for changes every 1 second to ensure consistent data
-    const intervalId = setInterval(() => {
-      loadUserData();
-    }, 1000);
+    // Then fetch fresh data from Firebase
+    fetchFirebaseData();
     
-    return () => clearInterval(intervalId);
+    // Set up regular polling for Firebase data
+    const firebaseInterval = setInterval(() => {
+      fetchFirebaseData();
+    }, 10000); // Check Firebase every 10 seconds
+    
+    // Set up more frequent localStorage checks
+    const localInterval = setInterval(() => {
+      loadUserData();
+    }, 2000); // Check localStorage every 2 seconds
+    
+    return () => {
+      clearInterval(firebaseInterval);
+      clearInterval(localInterval);
+    };
   }, []);
+  
+  // Fetch data from Firebase
+  const fetchFirebaseData = async () => {
+    try {
+      console.log("Fetching user data from Firebase...");
+      const result = await getUserDataFromFirebase();
+      if (result.success) {
+        console.log("Firebase data fetched successfully");
+      } else {
+        console.warn("Failed to fetch Firebase data:", result.error);
+      }
+    } catch (error) {
+      console.error("Error fetching Firebase data:", error);
+    }
+  };
   
   // Separate function to load user data from localStorage
   const loadUserData = () => {

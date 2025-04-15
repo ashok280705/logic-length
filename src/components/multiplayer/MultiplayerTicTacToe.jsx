@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useMultiplayer } from './MultiplayerContext';
 import { useNavigate } from 'react-router-dom';
+import { getUserDataFromFirebase, updateUserCoins } from '../../services/authService';
 
 const MultiplayerTicTacToe = ({ cost, deductCoins, user }) => {
   const navigate = useNavigate();
@@ -127,50 +128,31 @@ const MultiplayerTicTacToe = ({ cost, deductCoins, user }) => {
   // Update coins when game ends
   useEffect(() => {
     if (gameResult && gameResult.gameOver) {
-      // If game resulted in win or draw, update coins in localStorage
+      // If game resulted in win or draw, update coins in Firebase
       if ((gameResult.winner === symbol) || gameResult.draw) {
-        // Get latest user data
-        const userData = getLatestUserData();
-        
         // Calculate reward (1.5x for win, 0.5x for draw)
-        const reward = gameResult.winner === symbol ? cost * 1.5 : (gameResult.draw ? cost * 0.5 : 0);
-        const roundedReward = Math.floor(reward);
+        const reward = gameResult.winner === symbol ? Math.floor(cost * 1.5) : (gameResult.draw ? Math.floor(cost * 0.5) : 0);
         
-        if (roundedReward > 0) {
-          // Update coins in localStorage
-          const updatedCoins = (userData.coins || 0) + roundedReward;
-          const updatedUserData = {
-            ...userData,
-            coins: updatedCoins,
-            transactions: [
-              ...(userData.transactions || []),
-              {
-                amount: roundedReward,
-                type: 'game_reward',
-                gameType: 'tictactoe',
-                result: gameResult.winner === symbol ? 'win' : 'draw',
-                date: new Date().toISOString()
-              }
-            ]
-          };
-          
-          localStorage.setItem('user', JSON.stringify(updatedUserData));
-          setUserCoins(updatedCoins);
-          
-          // Dispatch event for other components
-          window.dispatchEvent(new CustomEvent('coinBalanceUpdated', { 
-            detail: { 
-              newBalance: updatedCoins,
-              userData: updatedUserData
-            } 
-          }));
-          
-          // Show reward message
-          alert(`Congratulations! You earned ${roundedReward} coins!`);
+        if (reward > 0) {
+          // Use updateUserCoins to update in Firebase
+          updateUserCoins(
+            reward, 
+            'game_reward', 
+            'tictactoe'
+          ).then(result => {
+            if (result.success) {
+              // Show reward message
+              alert(`Congratulations! You earned ${reward} coins!`);
+            } else {
+              console.error("Failed to add reward:", result.error);
+            }
+          }).catch(error => {
+            console.error("Error updating coins:", error);
+          });
         }
       }
     }
-  }, [gameResult, symbol, cost, getLatestUserData]);
+  }, [gameResult, symbol, cost]);
   
   // Reset coins deducted when leaving the game
   useEffect(() => {

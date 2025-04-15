@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { updateUserCoins } from '../services/authService';
 
 const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
   const [selectedPackage, setSelectedPackage] = useState(null);
@@ -66,7 +67,7 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
     // Direct addition in Coin Zone, payment gateway in Prime Zone
     if (activeZone === 'coin') {
       // For Coin Zone: directly add coins without payment gateway
-      handleDirectCoinAddition(selectedPackage);
+      handleDirectCoinAddition(userData, selectedPackage.coins, selectedPackage, onSuccess, setSuccess, setSelectedPackage, setUserData);
     } else {
       // For Prime Zone: Use normal payment flow
       // Store selected package in localStorage for verification when user returns
@@ -89,50 +90,22 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
     }
   };
 
-  // Direct coin addition for Coin Zone
-  const handleDirectCoinAddition = (packageData) => {
+  // Direct coin addition handler when a package is selected
+  const handleDirectCoinAddition = async (userData, coinsToAdd, packageData, onSuccess, setSuccess, setSelectedPackage, setUserData) => {
     try {
-      // Verify user is logged in
-      if (!userData) {
-        throw new Error('Please login to continue');
+      console.log("Processing direct coin addition:", coinsToAdd);
+      
+      // Call Firebase to update user coins
+      const result = await updateUserCoins(coinsToAdd, 'purchase', null);
+      
+      if (!result.success) {
+        console.error("Failed to update coins:", result.error);
+        alert("Failed to add coins: " + result.error);
+        return;
       }
       
-      // Get fresh user data from localStorage
-      const userStr = localStorage.getItem('user');
-      if (!userStr) throw new Error('User data not found');
-      
-      const user = JSON.parse(userStr);
-      
-      // Calculate new coin balance
-      const currentCoins = parseInt(user.coins) || 0;
-      const coinsToAdd = parseInt(packageData.coins);
-      const totalCoins = currentCoins + coinsToAdd;
-      
-      console.log('Current coins:', currentCoins);
-      console.log('Adding coins:', coinsToAdd);
-      console.log('New total:', totalCoins);
-
-      // Create updated user object
-      const updatedUser = {
-        ...user,
-        coins: totalCoins,
-        transactions: [
-          ...(user.transactions || []),
-          {
-            amount: coinsToAdd,
-            paymentId: 'direct_addition_' + Date.now(),
-            type: 'purchase',
-            date: new Date().toISOString(),
-            price: packageData.price
-          }
-        ]
-      };
-
-      // Save to localStorage
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      // Update state
-      setUserData(updatedUser);
+      // Update state with the result from Firebase
+      setUserData(result.userData);
       setSuccess(true);
       setSelectedPackage(null);
       
@@ -141,17 +114,8 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
         onSuccess(coinsToAdd);
       }
       
-      // Broadcast coin update event to refresh all components
-      window.dispatchEvent(new CustomEvent('coinBalanceUpdated', { 
-        detail: { 
-          newBalance: totalCoins,
-          userData: updatedUser
-        } 
-      }));
-      
-      // Force a reload of the main page to update all coin displays
+      // Navigate back to previous page after a short delay
       setTimeout(() => {
-        // Instead of full page reload, navigate back to previous page
         if (window.history.length > 1) {
           window.history.back();
         } else {
@@ -160,10 +124,8 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       }, 1500);
       
     } catch (error) {
-      console.error('Error adding coins directly:', error);
-      setError(error.message || 'Failed to add coins. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error("Error during coin addition:", error);
+      alert("An error occurred: " + error.message);
     }
   };
 
