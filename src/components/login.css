@@ -163,7 +163,7 @@
   background: rgba(155, 77, 255, 0.1);
   filter: blur(60px);
   z-index: -1;
-  transition: transform 0.5s ease;
+  animation: pulseSlow 8s ease-in-out infinite alternate;
 }
 
 .glow-triangle {
@@ -295,24 +295,42 @@
   transition: 0.3s ease;
 }
 
-/* Error message */
-.error-message {
+/* Error and success messages */
+.error-message,
+.success-message {
   display: flex;
   align-items: center;
   margin-bottom: 20px;
   padding: 12px 16px;
-  background: rgba(255, 71, 87, 0.1);
-  border-left: 4px solid var(--error-color);
   border-radius: 4px;
+  animation: fadeIn 0.3s ease;
 }
 
-.error-icon {
+.error-message {
+  background: rgba(255, 71, 87, 0.1);
+  border-left: 4px solid var(--error-color);
+}
+
+.success-message {
+  background: rgba(0, 230, 118, 0.1);
+  border-left: 4px solid var(--success-color);
+}
+
+.error-icon,
+.success-icon {
   margin-right: 12px;
   display: flex;
   justify-content: center;
   align-items: center;
   min-width: 24px;
+}
+
+.error-icon {
   color: var(--error-color);
+}
+
+.success-icon {
+  color: var(--success-color);
 }
 
 /* Form styles */
@@ -323,6 +341,23 @@
 .form-group {
   margin-bottom: 25px;
   position: relative;
+}
+
+.form-group.has-error .form-input {
+  border-color: var(--error-color);
+}
+
+.form-group.has-error .input-icon {
+  color: var(--error-color);
+}
+
+.input-error {
+  position: absolute;
+  left: 0;
+  bottom: -18px;
+  font-size: 12px;
+  color: var(--error-color);
+  animation: fadeIn 0.3s ease;
 }
 
 .input-icon {
@@ -483,6 +518,14 @@
   width: calc(50% - 30px);
   height: 1px;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.auth-divider::before {
+  left: 0;
+}
+
+.auth-divider::after {
+  right: 0;
 }
 
 .auth-divider span {
@@ -694,7 +737,7 @@
 @keyframes fadeIn {
   0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   100% {
     opacity: 1;
