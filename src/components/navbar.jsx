@@ -75,7 +75,10 @@ const Navbar = ({ onLogout, user }) => {
     if (userStr) {
       try {
         const userData = JSON.parse(userStr);
+        // Ensure coins is always treated as a number
+        userData.coins = parseInt(userData.coins) || 0;
         setCurrentUser(userData);
+        console.log(`[Navbar] Updated coin balance: ${userData.coins}`);
       } catch (err) {
         console.error("Error parsing user data from localStorage", err);
       }

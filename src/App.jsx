@@ -49,23 +49,97 @@ const App = () => {
   // Deduct coins when playing a game
   const deductCoins = async (gameType) => {
     try {
+      // First check if gameType is valid
+      if (!gameType || !GAME_COSTS[gameType]) {
+        console.error(`Invalid gameType: ${gameType}`);
+        return false;
+      }
+
       const cost = GAME_COSTS[gameType] || 0;
-      console.log(`Attempting to deduct ${cost} coins for game ${gameType}`);
+      console.log(`----- DEDUCTING COINS -----`);
+      console.log(`Game: ${gameType}, Cost: ${cost} coins`);
+      
+      // Get user data directly from localStorage for immediate check
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        console.error("No user data found in localStorage");
+        alert("User data not found. Please log in again.");
+        navigate('/login');
+        return false;
+      }
+      
+      // Parse user data
+      let userData;
+      try {
+        userData = JSON.parse(userStr);
+        console.log(`Current coins: ${userData.coins || 0}`);
+      } catch (e) {
+        console.error("Error parsing user data:", e);
+        alert("There was an error with your user data. Please log in again.");
+        navigate('/login');
+        return false;
+      }
+      
+      // Check if user has enough coins - IMPORTANT CHECK
+      const currentCoins = parseInt(userData.coins) || 0;
+      if (currentCoins < cost) {
+        console.error(`Not enough coins. Has: ${currentCoins}, Needs: ${cost}`);
+        alert(`Not enough coins! You need ${cost} coins to play this game, but you only have ${currentCoins}. Please top up your balance.`);
+        navigate('/payment');
+        return false;
+      }
+      
+      console.log(`User has enough coins. Proceeding with deduction...`);
       
       // Use the updateUserCoins function from authService to update in Firebase
       const result = await updateUserCoins(-cost, 'game_fee', gameType);
       
       if (!result.success) {
         console.error("Failed to deduct coins:", result.error);
-        alert(`Not enough coins! You need ${cost} coins to play.`);
-        navigate('/payment');
-        return false;
+        
+        // Manual fallback if Firebase fails
+        try {
+          // Calculate new balance
+          const newCoins = currentCoins - cost;
+          console.log(`Firebase update failed. Manual updating to ${newCoins} coins`);
+          
+          // Update user data
+          userData.coins = newCoins;
+          userData.transactions = [
+            ...(userData.transactions || []),
+            {
+              amount: -cost,
+              type: 'game_fee',
+              gameType: gameType,
+              date: new Date().toISOString()
+            }
+          ];
+          
+          // Save to localStorage
+          localStorage.setItem('user', JSON.stringify(userData));
+          
+          // Dispatch event to update UI
+          window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
+            detail: {
+              newBalance: newCoins,
+              userData: userData
+            }
+          }));
+          
+          console.log(`Manual coin deduction successful. New balance: ${newCoins}`);
+          return true;
+        } catch (fallbackError) {
+          console.error("Manual fallback failed:", fallbackError);
+          alert("There was an error deducting coins. Please try again.");
+          return false;
+        }
       }
       
-      console.log("Successfully deducted coins:", result);
+      console.log(`Coin deduction successful! New balance: ${result.coins}`);
       return true;
     } catch (error) {
       console.error("Error deducting coins:", error);
+      alert("An unexpected error occurred. Please try again.");
       return false;
     }
   };

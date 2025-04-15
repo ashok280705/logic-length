@@ -102,7 +102,22 @@ const MultiplayerTicTacToe = ({ cost, deductCoins, user }) => {
     if (userStr) {
       try {
         userData = JSON.parse(userStr);
-        setUserCoins(userData.coins || 0);
+        const currentCoins = parseInt(userData.coins) || 0;
+        setUserCoins(currentCoins);
+        
+        console.log("----- CHECKING COINS FOR MATCHMAKING -----");
+        console.log(`Game: tictactoe, Cost: ${cost} coins`);
+        console.log(`Current balance: ${currentCoins} coins`);
+        
+        // Check if user has enough coins
+        if (currentCoins < cost) {
+          console.error(`Not enough coins. Has: ${currentCoins}, Needs: ${cost}`);
+          alert(`Not enough coins! You need ${cost} coins to play, but you only have ${currentCoins}. Please top up your balance.`);
+          navigate('/payment');
+          return;
+        }
+        
+        console.log(`User has enough coins. Starting matchmaking...`);
       } catch (e) {
         console.error("Error parsing user data:", e);
         alert("There was an error loading your coin balance. Please refresh the page.");
@@ -114,14 +129,7 @@ const MultiplayerTicTacToe = ({ cost, deductCoins, user }) => {
       return;
     }
     
-    // Check if user has enough coins
-    if ((userData.coins || 0) < cost) {
-      alert(`Not enough coins! You need ${cost} coins to play. Please top up your balance.`);
-      navigate('/payment');
-      return;
-    }
-    
-    console.log("Starting matchmaking with coins:", userData.coins);
+    console.log("Starting matchmaking for tictactoe");
     joinMatchmaking('tictactoe');
   };
   
