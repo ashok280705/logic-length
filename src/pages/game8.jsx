@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { logoutUser } from "../services/authService";
 
 const AviatorGame = ({ cost = 25, deductCoins = () => true, user, onLogout }) => {
   const canvasRef = useRef(null);
@@ -340,11 +341,17 @@ const AviatorGame = ({ cost = 25, deductCoins = () => true, user, onLogout }) =>
     setMoveHistory([]);
   };
 
-  const signOut = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      navigate('/home');
+  const signOut = async () => {
+    try {
+      await logoutUser();
+      if (onLogout) {
+        onLogout();
+      }
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      // Fallback to manual navigation
+      navigate("/home");
     }
   };
 

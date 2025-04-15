@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/navbar.jsx';
+import { logoutUser } from "../services/authService";
 
 const Game = () => {
   // State variables
@@ -130,10 +131,18 @@ const Game = () => {
   };
 
   // Sign-out functionality
-  const signOut = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('currentUser');
-    window.location.href = '/';
+  const signOut = async () => {
+    try {
+      await logoutUser();
+      // Navigate to login page after successful logout
+      window.location.href = '/';
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      // Fallback to manual logout
+      localStorage.removeItem('user');
+      localStorage.removeItem('currentUser');
+      window.location.href = '/';
+    }
   };
 
   return (

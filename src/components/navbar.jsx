@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Payment from "./Payment";
+import { logoutUser } from "../services/authService";
 
 const Navbar = ({ onLogout, user }) => {
   const navigate = useNavigate();
@@ -154,10 +155,25 @@ const Navbar = ({ onLogout, user }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    onLogout(); 
-    navigate("/"); 
+  const handleLogout = async () => {
+    try {
+      await logoutUser(); // This will call Firebase signOut and clear localStorage
+      
+      // If there's an onLogout callback, call it
+      if (onLogout) {
+        onLogout();
+      }
+      
+      // Navigate to login page
+      navigate("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      
+      // Fallback to manual logout if the service fails
+      localStorage.removeItem("user");
+      if (onLogout) onLogout();
+      navigate("/");
+    }
   };
 
   // Add notification function

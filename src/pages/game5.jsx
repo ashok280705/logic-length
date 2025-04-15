@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { logoutUser } from "../services/authService";
 
 const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout }) => {
   const [userChoice, setUserChoice] = useState('');
@@ -135,11 +136,17 @@ const RockPaperScissors = ({ cost = 15, deductCoins = () => true, user, onLogout
     return { name: "Player", coins: 0 };
   };
 
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      navigate('/home');
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      if (onLogout) {
+        onLogout();
+      }
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      // Fallback to manual navigation
+      navigate("/home");
     }
   };
 

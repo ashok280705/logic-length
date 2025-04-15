@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { logoutUser } from "../services/authService";
 
 const MineGame = () => {
   const [cells, setCells] = useState(Array(25).fill(null));
@@ -50,9 +51,16 @@ const MineGame = () => {
     setGameStarted(false);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      // Fallback to manual logout
+      localStorage.removeItem('user');
+      navigate("/");
+    }
   };
 
   // SVG Icons

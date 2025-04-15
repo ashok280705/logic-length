@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { gsap, Power1 } from 'gsap';
 import Navbar from '../components/navbar.jsx';
 import { useNavigate } from 'react-router-dom';
+import { logoutUser } from "../services/authService";
 
 // If you haven't already, import Tailwind's base styles (usually in your index.css)
 // and ensure the Comfortaa font is imported in your index.html or via Tailwind's config.
@@ -474,11 +475,17 @@ const StackGame = ({ cost = 5, deductCoins = () => true, user, onLogout }) => {
   };
 
   // Handle user logout
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      navigate('/home');
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      if (onLogout) {
+        onLogout();
+      }
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      // Fallback to manual navigation
+      navigate("/home");
     }
   };
 

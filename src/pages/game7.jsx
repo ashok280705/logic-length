@@ -3,6 +3,7 @@ import * as Tone from "tone";
 import Matter from "matter-js";
 import { useNavigate } from "react-router-dom";
 import Navbar from '../components/navbar.jsx';
+import { logoutUser } from "../services/authService";
 
 export default function PlinkoGame({ cost = 20, deductCoins = () => true, user, onLogout }) {
   const canvasRef = useRef(null);
@@ -60,11 +61,17 @@ export default function PlinkoGame({ cost = 20, deductCoins = () => true, user, 
     return { name: "Player", coins: 0 };
   };
 
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      navigate('/home');
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      if (onLogout) {
+        onLogout();
+      }
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      // Fallback to manual navigation
+      navigate("/home");
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from '../components/navbar.jsx';
 import { useNavigate } from 'react-router-dom';
+import { logoutUser } from "../services/authService";
 
 const pieces = {
   Pawn: "♙", Knight: "♘", Bishop: "♗", Rook: "♖", Queen: "♕", King: "♔",
@@ -119,12 +120,17 @@ const ChessGame = ({ cost = 10, deductCoins = () => true, user, onLogout }) => {
     return { name: "Player", coins: 0 };
   };
 
-  const signOut = () => {
-    if (onLogout) {
-      onLogout();
-    } else {
-      // Navigate to home page
-      navigate('/home');
+  const signOut = async () => {
+    try {
+      await logoutUser();
+      if (onLogout) {
+        onLogout();
+      }
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      // Fallback to manual navigation
+      navigate("/home");
     }
   };
 

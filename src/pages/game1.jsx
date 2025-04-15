@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from '../components/navbar.jsx';
+import { logoutUser } from "../services/authService";
 
 const PlayerForm = ({ onStart, coinCost }) => {
   const [name1, setName1] = useState("");
@@ -153,9 +154,18 @@ export default function TicTacToe({ cost = 5, deductCoins = () => true, user, on
     }
   };
 
-  const signOut = () => {
-    // Navigate to home page
-    navigate('/home');
+  const signOut = async () => {
+    try {
+      await logoutUser();
+      if (onLogout) {
+        onLogout();
+      }
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+      // Fallback to manual navigation
+      navigate("/home");
+    }
   };
 
   return (
