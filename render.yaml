@@ -44,6 +44,11 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-store
+    spa: true
     envVars:
       - key: VITE_SERVER_URL
         value: https://logic-length.onrender.com
