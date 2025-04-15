@@ -1,0 +1,21 @@
+{
+  "name": "logic-length-game-server",
+  "version": "1.0.0",
+  "description": "Multiplayer game server for Logic Length",
+  "main": "gameServer.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node gameServer.js",
+    "dev": "nodemon gameServer.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+} 
