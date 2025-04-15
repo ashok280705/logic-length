@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
+
 const router = express.Router();
-const Razorpay = require('razorpay');
-const crypto = require('crypto');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -54,4 +55,4 @@ router.post('/verify', async (req, res) => {
     }
 });
 
-module.exports = router; 
+export default router; 

@@ -2,6 +2,7 @@
   "name": "logic-length-game-server",
   "version": "1.0.0",
   "description": "Multiplayer game server for Logic Length",
+  "type": "module",
   "main": "gameServer.js",
   "scripts": {
     "start": "node gameServer.js",
