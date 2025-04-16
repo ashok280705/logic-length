@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./components/navbar.jsx";
 import Main_bar from "./components/main_bar.jsx";
@@ -39,8 +39,28 @@ const GAME_COSTS = {
 };
 
 const App = () => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, loading } = useAuth();
   const navigate = useNavigate();
+  
+  // Debug logging for deployment issues
+  useEffect(() => {
+    console.log('======= App Component Mounted =======');
+    console.log('Current Environment:', process.env.NODE_ENV);
+    console.log('Current User:', currentUser ? 'Logged in' : 'Not logged in');
+    console.log('User Profile:', userProfile ? 'Available' : 'Not available');
+    console.log('localStorage user data:', localStorage.getItem('user') ? 'Present' : 'Not present');
+    console.log('Auth Loading State:', loading);
+    console.log('Current Path:', window.location.pathname);
+    console.log('Current Hash:', window.location.hash);
+    console.log('====================================');
+  }, [currentUser, userProfile, loading]);
+  
+  // Check if user is authenticated either via Firebase or localStorage
+  const isAuthenticated = () => {
+    const authState = currentUser || localStorage.getItem('user');
+    console.log('Auth Check Result:', !!authState);
+    return authState;
+  };
 
   // Check if user has enough coins for a game
   const hasEnoughCoins = (gameType) => {
@@ -161,24 +181,37 @@ const App = () => {
       return false;
     }
   };
+  
+  // If auth loading, show a loading spinner instead of redirecting
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#06013a] flex items-center justify-center">
+        <div className="relative">
+          <div className="w-24 h-24 border-t-4 border-b-4 border-purple-500 rounded-full animate-spin"></div>
+          <div className="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin absolute top-4 left-4"></div>
+          <div className="absolute top-10 left-10 text-white text-xl font-bold animate-pulse">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <MultiplayerProvider>
       <Routes>
         {/* If there's no user, render Login page */}
-        <Route path="/" element={!currentUser ? <Login /> : <Navigate to="/home" />} />
+        <Route path="/" element={!isAuthenticated() ? <Login /> : <Navigate to="/home" />} />
         
         {/* Add explicit login route */}
-        <Route path="/login" element={!currentUser ? <Login /> : <Navigate to="/home" />} />
+        <Route path="/login" element={!isAuthenticated() ? <Login /> : <Navigate to="/home" />} />
         
         {/* Add explicit register route */}
-        <Route path="/register" element={!currentUser ? <Login isLogin={false} /> : <Navigate to="/home" />} />
+        <Route path="/register" element={!isAuthenticated() ? <Login isLogin={false} /> : <Navigate to="/home" />} />
 
         {/* Add profile route */}
         <Route
           path="/profile"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <UserProfile />
@@ -193,7 +226,7 @@ const App = () => {
         <Route
           path="/home"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Main_bar gameCosts={GAME_COSTS} />
@@ -208,7 +241,7 @@ const App = () => {
         <Route
           path="/game-history"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <ErrorBoundary>
@@ -225,7 +258,7 @@ const App = () => {
         <Route
           path="/transaction-history"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <ErrorBoundary>
@@ -242,7 +275,7 @@ const App = () => {
         <Route
           path="/profile-settings"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <ProfileSettings />
@@ -257,7 +290,7 @@ const App = () => {
         <Route
           path="/multiplayer-games"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <MultiplayerGames 
@@ -277,7 +310,7 @@ const App = () => {
         <Route
           path="/single-player-games"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <SinglePlayerGames 
@@ -298,7 +331,7 @@ const App = () => {
         <Route 
           path="/tictactoe" 
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Game1 cost={GAME_COSTS.tictactoe} deductCoins={() => deductCoins('tictactoe')} />
@@ -312,7 +345,7 @@ const App = () => {
         <Route 
           path="/chess" 
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Game3 cost={GAME_COSTS.chess} deductCoins={() => deductCoins('chess')} />
@@ -326,7 +359,7 @@ const App = () => {
         <Route 
           path="/snakes" 
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Game4 cost={GAME_COSTS.snakes} deductCoins={() => deductCoins('snakes')} />
@@ -340,7 +373,7 @@ const App = () => {
         <Route 
           path="/rock-paper-scissors" 
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Game5 cost={GAME_COSTS['rock-paper-scissors']} deductCoins={() => deductCoins('rock-paper-scissors')} />
@@ -354,7 +387,7 @@ const App = () => {
         <Route 
           path="/mines-plinko" 
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Game6 cost={GAME_COSTS['mines-plinko']} deductCoins={() => deductCoins('mines-plinko')} />
@@ -368,7 +401,7 @@ const App = () => {
         <Route 
           path="/snail-race" 
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Game7 cost={GAME_COSTS['snail-race']} deductCoins={() => deductCoins('snail-race')} />
@@ -382,7 +415,7 @@ const App = () => {
         <Route 
           path="/aviator" 
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Game8 cost={GAME_COSTS.game8} deductCoins={() => deductCoins('game8')} />
@@ -397,7 +430,7 @@ const App = () => {
         <Route
           path="/multiplayer-tictactoe"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <ErrorBoundary>
                 <div className="min-h-screen bg-gradient-to-b from-[#0c0124] via-[#12002e] to-[#160041]">
                   <Navbar onLogout={logout} user={userProfile} />
@@ -427,7 +460,7 @@ const App = () => {
         <Route
           path="/multiplayer-chess"
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <ErrorBoundary>
                 <MultiplayerChessPage />
               </ErrorBoundary>
@@ -441,7 +474,7 @@ const App = () => {
         <Route 
           path="/payment" 
           element={
-            currentUser ? (
+            isAuthenticated() ? (
               <>
                 <Navbar />
                 <Payment />
@@ -453,7 +486,7 @@ const App = () => {
         />
 
         {/* Catch all route - redirect to home if logged in or login page if not */}
-        <Route path="*" element={currentUser ? <Navigate to="/home" /> : <Navigate to="/login" />} />
+        <Route path="*" element={isAuthenticated() ? <Navigate to="/home" /> : <Navigate to="/login" />} />
       </Routes>
     </MultiplayerProvider>
   );
