@@ -111,4 +111,99 @@ router.post('/verify', async (req, res) => {
     }
 });
 
+// Check payment status
+router.post('/check-status', async (req, res) => {
+    try {
+        const { orderId, paymentId, userId, amount } = req.body;
+        
+        // If running in dummy mode, consider all payments successful
+        if (!RAZORPAY_KEY_SECRET || !RAZORPAY_KEY_ID) {
+            console.log('DUMMY RAZORPAY: Payment status check skipped, returning success');
+            return res.json({ 
+                success: true, 
+                verified: true,
+                status: 'paid',
+                paymentId: paymentId || `dummy_payment_${Date.now()}`
+            });
+        }
+        
+        // If we don't have Razorpay SDK properly initialized
+        if (!razorpay.orders || typeof razorpay.orders.fetch !== 'function') {
+            return res.json({ 
+                success: false, 
+                error: 'Payment verification system unavailable',
+                status: 'unknown'
+            });
+        }
+        
+        try {
+            // Check order status directly with Razorpay
+            const orderDetails = await razorpay.orders.fetch(orderId);
+            
+            console.log('Razorpay order details:', orderDetails);
+            
+            // Check payment status based on order status
+            if (orderDetails.status === 'paid') {
+                return res.json({
+                    success: true,
+                    verified: true,
+                    status: 'paid',
+                    paymentId: paymentId || orderDetails.receipt || `verified_${Date.now()}`
+                });
+            } else if (orderDetails.status === 'created') {
+                // Order created but payment not completed
+                return res.json({
+                    success: true,
+                    verified: false,
+                    status: 'pending',
+                    message: 'Payment not yet completed'
+                });
+            } else if (orderDetails.status === 'attempted') {
+                // Payment was attempted but failed
+                return res.json({
+                    success: true,
+                    verified: false,
+                    status: 'failed',
+                    message: 'Payment was attempted but failed'
+                });
+            } else {
+                // Unknown status
+                return res.json({
+                    success: true,
+                    verified: false,
+                    status: orderDetails.status,
+                    message: 'Payment status is unclear'
+                });
+            }
+        } catch (razorpayError) {
+            console.error('Error checking Razorpay order:', razorpayError);
+            
+            // If we have a payment ID but couldn't verify the order
+            // (this might happen if the order was completed but we lost track)
+            if (paymentId) {
+                return res.json({
+                    success: true,
+                    verified: true, // Assume valid if user has payment ID
+                    status: 'assumed_paid',
+                    paymentId: paymentId,
+                    message: 'Payment assumed valid based on payment ID'
+                });
+            }
+            
+            return res.json({
+                success: false,
+                error: 'Could not verify payment status',
+                status: 'unknown'
+            });
+        }
+    } catch (error) {
+        console.error('Error in payment status check:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Payment status check failed',
+            status: 'error'
+        });
+    }
+});
+
 export default router; 

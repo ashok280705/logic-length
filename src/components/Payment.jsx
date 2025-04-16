@@ -84,125 +84,193 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
     }
 
     setLoading(true);
+    setError(null); // Clear any previous errors
     
-    // Refresh zone state from localStorage before processing
-    const activeZone = localStorage.getItem('activeZone') || currentZone;
-    console.log('Processing payment in zone:', activeZone);
-    
-    // Direct addition in Coin Zone, payment gateway in Prime Zone
-    if (activeZone === 'coin') {
-      // For Coin Zone: directly add coins without payment gateway
-      await handleDirectCoinAddition(userData, selectedPackage.coins, selectedPackage);
-    } else {
-      // For Prime Zone: Use Razorpay payment flow
-      try {
-        // Create an order on the server
-        const response = await axios.post(`${SERVER_URL}/api/payment/create-order`, {
-          amount: selectedPackage.price,
-          package: selectedPackage
-        });
+    try {
+      // Refresh zone state from localStorage before processing
+      const activeZone = localStorage.getItem('activeZone') || currentZone;
+      console.log('Processing payment in zone:', activeZone);
+      
+      // Direct addition in Coin Zone, payment gateway in Prime Zone
+      if (activeZone === 'coin') {
+        // For Coin Zone: directly add coins without payment gateway
+        await handleDirectCoinAddition(userData, selectedPackage.coins, selectedPackage);
+      } else {
+        // For Prime Zone: Use Razorpay payment flow
         
-        console.log('Order created:', response.data);
-        
-        if (response.data.success) {
-          // If we got a direct payment link, use that (fallback approach)
-          if (response.data.paymentLink) {
-            // Store selected package in localStorage for verification when user returns
-            localStorage.setItem('pendingPackage', JSON.stringify({
-              ...selectedPackage,
-              timestamp: Date.now(),
-              orderId: response.data.orderId
-            }));
+        // Check if Razorpay is loaded
+        if (typeof window.Razorpay === 'undefined') {
+          console.log('Razorpay not loaded, attempting to load again...');
+          await new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.async = true;
+            script.onload = () => resolve(true);
+            document.body.appendChild(script);
             
-            // Redirect to Razorpay payment link
-            window.open(response.data.paymentLink, '_blank');
-            setVerifyMode(true);
-          } else {
-            // Use the integrated Razorpay checkout
-            const options = {
-              key: response.data.key,
-              amount: response.data.amount,
-              currency: response.data.currency || 'INR',
-              name: 'Logic Length',
-              description: `${selectedPackage.name} - ${selectedPackage.coins} Coins`,
-              order_id: response.data.orderId,
-              handler: async function (response) {
-                try {
-                  console.log('Payment successful:', response);
-                  
-                  // Verify payment with our server
-                  const verifyResponse = await axios.post(`${SERVER_URL}/api/payment/verify`, {
-                    orderId: response.razorpay_order_id,
-                    paymentId: response.razorpay_payment_id,
-                    signature: response.razorpay_signature,
-                    userId: userData.userId
-                  });
-                  
-                  if (verifyResponse.data.success) {
-                    // If successful, update the user's coins locally
-                    const updatedUser = {
-                      ...userData,
-                      coins: parseInt(userData.coins || 0) + selectedPackage.coins
-                    };
-                    
-                    // Update localStorage
-                    localStorage.setItem('user', JSON.stringify(updatedUser));
-                    
-                    // Update state
-                    setUserData(updatedUser);
-                    setSuccess(true);
-                    setSelectedPackage(null);
-                    
-                    // Dispatch event to update UI
-                    window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
-                      detail: {
-                        newBalance: updatedUser.coins,
-                        userData: updatedUser
-                      }
-                    }));
-                    
-                    // Call success callback
-                    if (onSuccess) {
-                      onSuccess(selectedPackage.coins);
-                    }
-                    
-                    // Remove pending package
-                    localStorage.removeItem('pendingPackage');
-                  }
-                } catch (error) {
-                  console.error('Error verifying payment:', error);
-                  setError('Failed to verify payment. Please contact support.');
-                } finally {
-                  setLoading(false);
-                }
-              },
-              prefill: {
-                name: userData?.username || '',
-                email: userData?.email || '',
-              },
-              theme: {
-                color: '#6320dd',
-              },
-              modal: {
-                ondismiss: function() {
-                  console.log('Checkout form closed');
-                  setLoading(false);
-                }
-              }
-            };
-            
-            // Open Razorpay checkout form
-            const razorpay = new window.Razorpay(options);
-            razorpay.open();
+            // Set a timeout in case script loading hangs
+            setTimeout(() => resolve(false), 5000);
+          });
+          
+          // If Razorpay still not available, use fallback
+          if (typeof window.Razorpay === 'undefined') {
+            throw new Error('Payment gateway not available. Please try again later or use direct coin addition.');
           }
-        } else {
-          throw new Error('Failed to create order');
         }
-      } catch (error) {
-        console.error('Payment error:', error);
-        setError('Failed to process payment. Please try again.');
-        setLoading(false);
+        
+        // Validate server URL before proceeding
+        if (!SERVER_URL) {
+          throw new Error('Server configuration missing. Please refresh the page or contact support.');
+        }
+        
+        // Retry mechanism for API calls
+        let attempts = 0;
+        const maxAttempts = 3;
+        let lastError = null;
+        
+        while (attempts < maxAttempts) {
+          try {
+            attempts++;
+            console.log(`Attempt ${attempts}/${maxAttempts} to create order`);
+            
+            // Create an order on the server with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+            
+            const response = await axios.post(`${SERVER_URL}/api/payment/create-order`, {
+              amount: selectedPackage.price,
+              package: selectedPackage,
+              userId: userData?.userId || 'guest'
+            }, { signal: controller.signal });
+            
+            clearTimeout(timeoutId);
+            
+            console.log('Order created:', response.data);
+            
+            if (response.data.success) {
+              // If we got a direct payment link, use that (fallback approach)
+              if (response.data.paymentLink) {
+                // Store selected package in localStorage for verification when user returns
+                localStorage.setItem('pendingPackage', JSON.stringify({
+                  ...selectedPackage,
+                  timestamp: Date.now(),
+                  orderId: response.data.orderId
+                }));
+                
+                // Redirect to Razorpay payment link
+                window.open(response.data.paymentLink, '_blank');
+                setVerifyMode(true);
+                setLoading(false);
+                return;
+              } else {
+                // Use the integrated Razorpay checkout
+                const options = {
+                  key: response.data.key,
+                  amount: response.data.amount,
+                  currency: response.data.currency || 'INR',
+                  name: 'Logic Length',
+                  description: `${selectedPackage.name} - ${selectedPackage.coins} Coins`,
+                  order_id: response.data.orderId,
+                  handler: async function (response) {
+                    try {
+                      console.log('Payment successful:', response);
+                      
+                      // Verify payment with our server
+                      const verifyResponse = await axios.post(`${SERVER_URL}/api/payment/verify`, {
+                        orderId: response.razorpay_order_id,
+                        paymentId: response.razorpay_payment_id,
+                        signature: response.razorpay_signature,
+                        userId: userData?.userId || 'guest'
+                      });
+                      
+                      if (verifyResponse.data.success) {
+                        // If successful, update the user's coins using our existing function
+                        await handleDirectCoinAddition(userData, selectedPackage.coins, {
+                          ...selectedPackage,
+                          paymentId: response.razorpay_payment_id
+                        });
+                        
+                        // Remove pending package
+                        localStorage.removeItem('pendingPackage');
+                      }
+                    } catch (error) {
+                      console.error('Error verifying payment:', error);
+                      setError('Verification failed, but your payment may have succeeded. Please check your account before trying again.');
+                      
+                      // Store pending verification for later
+                      localStorage.setItem('pendingPackage', JSON.stringify({
+                        ...selectedPackage,
+                        timestamp: Date.now(),
+                        orderId: response.razorpay_order_id,
+                        paymentId: response.razorpay_payment_id
+                      }));
+                      
+                      setVerifyMode(true);
+                    } finally {
+                      setLoading(false);
+                    }
+                  },
+                  prefill: {
+                    name: userData?.username || '',
+                    email: userData?.email || '',
+                  },
+                  theme: {
+                    color: '#6320dd',
+                  },
+                  modal: {
+                    ondismiss: function() {
+                      console.log('Checkout form closed');
+                      setLoading(false);
+                    }
+                  }
+                };
+                
+                // Open Razorpay checkout form
+                const razorpay = new window.Razorpay(options);
+                razorpay.open();
+                
+                // Break out of retry loop
+                break;
+              }
+            } else {
+              throw new Error(response.data.message || 'Failed to create order');
+            }
+          } catch (attemptError) {
+            lastError = attemptError;
+            console.warn(`Attempt ${attempts} failed:`, attemptError);
+            
+            // Only retry network errors or timeouts
+            if (attempts >= maxAttempts || 
+                !(attemptError.message.includes('network') || 
+                  attemptError.message.includes('timeout') || 
+                  attemptError.code === 'ECONNABORTED' ||
+                  attemptError.name === 'AbortError')) {
+              break;
+            }
+            
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+          }
+        }
+        
+        // If we exited the loop with an error and without a successful attempt
+        if (lastError && attempts >= maxAttempts) {
+          throw lastError;
+        }
       }
+    } catch (error) {
+      console.error('Payment error:', error);
+      
+      // Provide more helpful error messages based on error type
+      if (error.message.includes('network') || error.message.includes('timeout')) {
+        setError('Network connection error. Please check your internet and try again.');
+      } else if (error.message.includes('configuration') || error.message.includes('available')) {
+        setError('Payment system temporarily unavailable. Please try again later.');
+      } else {
+        setError('Failed to process payment. Please try again or contact support.');
+      }
+      
+      setLoading(false);
     }
   };
 
@@ -337,6 +405,50 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
         return;
       }
       
+      // First try to check with Razorpay if it was successful (if orderId exists)
+      if (pendingPackage.orderId && SERVER_URL) {
+        try {
+          // Attempt to verify with server
+          const verifyResponse = await axios.post(`${SERVER_URL}/api/payment/check-status`, {
+            orderId: pendingPackage.orderId,
+            paymentId: pendingPackage.paymentId || '',
+            userId: userData?.userId || 'guest',
+            amount: pendingPackage.price * 100 // in paise/cents
+          }, { 
+            timeout: 10000 // 10 second timeout
+          });
+          
+          if (verifyResponse.data.success && verifyResponse.data.verified) {
+            console.log('Payment verified via server check:', verifyResponse.data);
+            
+            // Use payment ID if returned from server
+            const paymentId = verifyResponse.data.paymentId || pendingPackage.paymentId || `manual-verify-${Date.now()}`;
+            
+            // Process the successful payment
+            await handleDirectCoinAddition(userData, pendingPackage.coins, {
+              ...pendingPackage,
+              paymentId
+            });
+            
+            // Remove pending package
+            localStorage.removeItem('pendingPackage');
+            setVerifyMode(false);
+            return;
+          } else if (verifyResponse.data.status === 'failed') {
+            throw new Error('Payment was declined or failed. Please try again with a different payment method.');
+          } else if (verifyResponse.data.status === 'pending') {
+            throw new Error('Your payment is still being processed. Please check back later.');
+          }
+          // If not verified via API, continue with manual verification through Firebase
+        } catch (verifyError) {
+          console.warn('Server verification failed, falling back to Firebase:', verifyError);
+          // Continue with Firebase verification as fallback
+        }
+      }
+      
+      // If we couldn't verify through Razorpay API or got here through fallback,
+      // proceed with manual verification through Firebase
+      
       // Call Firebase to update user coins
       const result = await updateUserCoins(pendingPackage.coins, 'purchase', null);
       
@@ -371,7 +483,7 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       }
     } catch (error) {
       console.error('Verification error:', error);
-      setError('Failed to verify payment: ' + error.message);
+      setError('Failed to verify payment: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
