@@ -19,35 +19,15 @@ export const AuthProvider = ({ children }) => {
   // Check for cached user data on mount
   useEffect(() => {
     try {
-      console.log('AuthProvider: Checking for cached user data');
       // Check for cached user data in localStorage
       const cachedUserData = localStorage.getItem('user');
       
       if (cachedUserData) {
-        try {
-          const userData = JSON.parse(cachedUserData);
-          console.log('Found cached user data:', {
-            userId: userData.userId,
-            username: userData.username,
-            hasEmail: !!userData.email,
-            coins: userData.coins
-          });
-          
-          // Validate minimum required fields
-          if (userData && userData.userId) {
-            // Set initial user profile from cache while waiting for Firebase
-            setUserProfile(userData);
-            console.log('Set user profile from cached data');
-          } else {
-            console.warn('Cached user data is invalid, missing userId');
-            localStorage.removeItem('user');
-          }
-        } catch (parseError) {
-          console.error('Invalid JSON in localStorage user data:', parseError);
-          localStorage.removeItem('user');
-        }
-      } else {
-        console.log('No cached user data found in localStorage');
+        const userData = JSON.parse(cachedUserData);
+        console.log('Found cached user data:', userData);
+        
+        // Set initial user profile from cache while waiting for Firebase
+        setUserProfile(userData);
       }
     } catch (err) {
       console.error('Error loading cached user data:', err);
@@ -55,7 +35,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    console.log('AuthProvider: Setting up Firebase auth listener');
     // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
@@ -85,7 +64,6 @@ export const AuthProvider = ({ children }) => {
             };
             
             setUserProfile(mergedProfile);
-            console.log('User profile set with merged data');
             
             // Store in localStorage for persistence
             localStorage.setItem('user', JSON.stringify(mergedProfile));
@@ -96,16 +74,23 @@ export const AuthProvider = ({ children }) => {
             const cachedUserStr = localStorage.getItem('user');
             
             if (cachedUserStr) {
-              try {
-                const cachedUser = JSON.parse(cachedUserStr);
-                console.log('Using cached user profile as fallback');
-                setUserProfile(cachedUser);
-              } catch (parseError) {
-                console.error('Invalid JSON in localStorage fallback:', parseError);
-                createBasicProfile(user);
-              }
+              const cachedUser = JSON.parse(cachedUserStr);
+              console.log('Using cached user profile as fallback');
+              setUserProfile(cachedUser);
             } else {
-              createBasicProfile(user);
+              // Create a basic profile if nothing exists
+              const basicProfile = {
+                userId: user.uid,
+                username: user.displayName || user.email.split('@')[0],
+                email: user.email,
+                coins: 100,
+                level: 1,
+                xp: 30
+              };
+              
+              console.log('Created basic user profile as fallback');
+              setUserProfile(basicProfile);
+              localStorage.setItem('user', JSON.stringify(basicProfile));
             }
           }
         } else {
@@ -119,23 +104,12 @@ export const AuthProvider = ({ children }) => {
             // On first load, if we have cached user but Firebase hasn't initialized yet,
             // don't clear the user data immediately
             console.log('Keeping cached user data until auth fully initializes');
-            
-            try {
-              // Validate the cached data
-              const cachedUser = JSON.parse(cachedUserStr);
-              if (cachedUser && cachedUser.userId) {
-                console.log('Using valid cached user data temporarily');
-              } else {
-                console.warn('Cached user data is invalid');
-                clearUserData();
-              }
-            } catch (e) {
-              console.error('Error parsing cached user data:', e);
-              clearUserData();
-            }
           } else {
             // Otherwise clear the user data
-            clearUserData();
+            console.log('Clearing user data');
+            setCurrentUser(null);
+            setUserProfile(null);
+            localStorage.removeItem('user');
           }
         }
         setError(null);
@@ -150,31 +124,6 @@ export const AuthProvider = ({ children }) => {
     // Cleanup subscription
     return () => unsubscribe();
   }, [authInitialized]);
-
-  // Helper function to create a basic profile
-  const createBasicProfile = (user) => {
-    // Create a basic profile if nothing exists
-    const basicProfile = {
-      userId: user.uid,
-      username: user.displayName || user.email.split('@')[0],
-      email: user.email,
-      coins: 100,
-      level: 1,
-      xp: 30
-    };
-    
-    console.log('Created basic user profile as fallback');
-    setUserProfile(basicProfile);
-    localStorage.setItem('user', JSON.stringify(basicProfile));
-  };
-  
-  // Helper function to clear user data
-  const clearUserData = () => {
-    console.log('Clearing user data');
-    setCurrentUser(null);
-    setUserProfile(null);
-    localStorage.removeItem('user');
-  };
 
   // Value to be provided
   const value = {

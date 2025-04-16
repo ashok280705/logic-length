@@ -3,22 +3,13 @@ import axios from 'axios';
 
 const DeploymentHandler = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [apiStatus, setApiStatus] = useState('unknown');
 
   useEffect(() => {
-    // Detect current environment
-    const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const isProduction = window.location.hostname.includes('vercel') || window.location.hostname.includes('netlify');
-    const deployedEnvironment = isProduction ? 'production' : (isLocalDevelopment ? 'development' : 'unknown');
-    
-    console.log('======= DEPLOYMENT HANDLER =======');
-    console.log('Environment:', deployedEnvironment);
-    console.log('Hostname:', window.location.hostname);
-    console.log('Protocol:', window.location.protocol);
-    
-    // Set server URL based on environment
+    // Configure axios for deployment - use production URL when not in development
+    const isLocalDevelopment = window.location.hostname === 'localhost';
     const serverUrl = isLocalDevelopment ? 'http://localhost:5002' : 'https://logic-length.onrender.com';
-    console.log('API Server URL:', serverUrl);
+    
+    console.log('Setting up API connection to:', serverUrl);
     
     // Set axios defaults with simple configuration
     axios.defaults.baseURL = serverUrl;
@@ -81,64 +72,12 @@ const DeploymentHandler = ({ children }) => {
       }
     );
 
-    // Try to check backend connection in production
-    const checkBackendConnection = async () => {
-      try {
-        console.log('Checking backend connection...');
-        const response = await axios.get('/api/health', { timeout: 5000 });
-        
-        if (response.data?.status === 'ok') {
-          console.log('✅ Backend is available');
-          setApiStatus('connected');
-        } else {
-          console.warn('⚠️ Backend responded but status is not OK');
-          setApiStatus('warning');
-        }
-      } catch (error) {
-        console.error('❌ Could not connect to backend:', error.message);
-        setApiStatus('disconnected');
-      } finally {
-        // Proceed regardless of connection status
-        setIsLoading(false);
-      }
-    };
+    // Simply finish loading quickly without checking connections
+    console.log('Skipping health checks, assuming backend is available');
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
     
-    // Check Firebase config
-    const checkFirebaseConfig = () => {
-      try {
-        const firebaseConfig = window.firebase?.options || null;
-        if (firebaseConfig) {
-          console.log('✅ Firebase config is available:', {
-            projectId: firebaseConfig.projectId,
-            authDomain: firebaseConfig.authDomain
-          });
-        } else {
-          console.warn('⚠️ Firebase config not found in window object');
-        }
-      } catch (error) {
-        console.error('❌ Error checking Firebase config:', error);
-      }
-    };
-
-    // Run checks and finish loading
-    const runChecks = async () => {
-      // In production, actually check backend
-      if (isProduction) {
-        checkFirebaseConfig();
-        await checkBackendConnection();
-      } else {
-        // In development, just check quickly
-        console.log('Skipping detailed health checks in development');
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 1000);
-      }
-    };
-    
-    // Run the checks
-    runChecks();
-    
-    console.log('====================================');
   }, []);
 
   if (isLoading) {
@@ -153,12 +92,7 @@ const DeploymentHandler = ({ children }) => {
     );
   }
 
-  // Show warning if backend is disconnected but still continue
-  if (apiStatus === 'disconnected') {
-    console.warn('Continuing without backend connection...');
-    // We could show a warning toast here but we'll proceed anyway
-  }
-
+  // No connection warnings - assume everything works
   return <>{children}</>;
 };
 

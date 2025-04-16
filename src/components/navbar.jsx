@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Payment from "./Payment";
 import { logoutUser, getUserDataFromFirebase } from "../services/authService.js";
+import { useAuth } from "../config/AuthContext";
 
 const Navbar = ({ onLogout, user }) => {
   const navigate = useNavigate();
   const [showPayment, setShowPayment] = useState(false);
-  const [currentUser, setCurrentUser] = useState(user);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -17,6 +18,10 @@ const Navbar = ({ onLogout, user }) => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [activeZone, setActiveZone] = useState('coin'); // Default to coin zone for direct payments
+  const [dataInitialized, setDataInitialized] = useState(false);
+
+  // Get auth context
+  const { userProfile } = useAuth();
 
   // Sample game data - in a real app, this might come from an API or context
   const availableGames = [
@@ -30,44 +35,74 @@ const Navbar = ({ onLogout, user }) => {
     { id: 8, name: 'Multiplayer Chess', image: 'multiplayer-chess.webp', coins: 70, category: 'strategy' },
   ];
 
-  // Load user data on mount and ensure it's refreshed on every render
+  // Initialize user data from different sources with priority order
   useEffect(() => {
-    // Initial load from localStorage
-    loadUserData();
+    const initializeUserData = () => {
+      console.log("Initializing user data in Navbar");
+      let userData = null;
+      
+      // Priority 1: Props passed directly to component
+      if (user) {
+        console.log("Using user data from props");
+        userData = user;
+      } 
+      // Priority 2: Auth context userProfile
+      else if (userProfile) {
+        console.log("Using user data from Auth context");
+        userData = userProfile;
+      } 
+      // Priority 3: localStorage
+      else {
+        try {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            console.log("Using user data from localStorage");
+            userData = JSON.parse(userStr);
+          }
+        } catch (err) {
+          console.error("Error parsing user data from localStorage", err);
+        }
+      }
+      
+      // If we have user data from any source, set it
+      if (userData) {
+        // Ensure coins is always treated as a number
+        userData.coins = parseInt(userData.coins) || 0;
+        setCurrentUser(userData);
+        setDataInitialized(true);
+        console.log(`[Navbar] Initial user data loaded. Username: ${userData.username}, Coins: ${userData.coins}`);
+      } else {
+        console.warn("[Navbar] No user data found from any source");
+      }
+    };
     
-    // Then fetch fresh data from Firebase
-    fetchFirebaseData();
+    initializeUserData();
+  }, [user, userProfile]);
+  
+  // Separate effect to watch for changes in userProfile from context
+  useEffect(() => {
+    if (userProfile && dataInitialized) {
+      console.log("[Navbar] Updating from userProfile context change");
+      setCurrentUser({
+        ...userProfile,
+        coins: parseInt(userProfile.coins) || 0
+      });
+    }
+  }, [userProfile, dataInitialized]);
+  
+  // Regular polling for fresh data
+  useEffect(() => {
+    if (!dataInitialized) return;
     
-    // Set up regular polling for Firebase data
-    const firebaseInterval = setInterval(() => {
-      fetchFirebaseData();
-    }, 10000); // Check Firebase every 10 seconds
-    
-    // Set up more frequent localStorage checks
+    // Set up regular polling for localStorage data
     const localInterval = setInterval(() => {
       loadUserData();
     }, 2000); // Check localStorage every 2 seconds
     
     return () => {
-      clearInterval(firebaseInterval);
       clearInterval(localInterval);
     };
-  }, []);
-  
-  // Fetch data from Firebase
-  const fetchFirebaseData = async () => {
-    try {
-      console.log("Fetching user data from Firebase...");
-      const result = await getUserDataFromFirebase();
-      if (result.success) {
-        console.log("Firebase data fetched successfully");
-      } else {
-        console.warn("Failed to fetch Firebase data:", result.error);
-      }
-    } catch (error) {
-      console.error("Error fetching Firebase data:", error);
-    }
-  };
+  }, [dataInitialized]);
   
   // Separate function to load user data from localStorage
   const loadUserData = () => {
@@ -77,8 +112,12 @@ const Navbar = ({ onLogout, user }) => {
         const userData = JSON.parse(userStr);
         // Ensure coins is always treated as a number
         userData.coins = parseInt(userData.coins) || 0;
-        setCurrentUser(userData);
-        console.log(`[Navbar] Updated coin balance: ${userData.coins}`);
+        
+        // Only update if different (to avoid unnecessary re-renders)
+        if (!currentUser || userData.coins !== currentUser.coins) {
+          setCurrentUser(userData);
+          console.log(`[Navbar] Updated coin balance: ${userData.coins}`);
+        }
       } catch (err) {
         console.error("Error parsing user data from localStorage", err);
       }
@@ -92,12 +131,21 @@ const Navbar = ({ onLogout, user }) => {
       
       if (event.detail.userData) {
         // If the event includes full user data, use it directly
-        setCurrentUser(event.detail.userData);
-        return;
+        const updatedUser = {
+          ...event.detail.userData,
+          coins: parseInt(event.detail.userData.coins) || 0
+        };
+        setCurrentUser(updatedUser);
+      } else if (event.detail.newBalance !== undefined) {
+        // If only the balance is provided, update just that field
+        setCurrentUser(prevUser => ({
+          ...prevUser,
+          coins: parseInt(event.detail.newBalance) || 0
+        }));
+      } else {
+        // Otherwise, get the updated user from localStorage
+        loadUserData();
       }
-      
-      // Otherwise, get the updated user from localStorage to ensure we have the latest data
-      loadUserData();
     };
     
     // Add event listener

@@ -4,7 +4,6 @@ import App from './App.jsx';
 import './index.css';
 import { HashRouter } from 'react-router-dom';
 import { AuthProvider } from './config/AuthContext';
-import DeploymentHandler from './components/DeploymentHandler.jsx';
 
 // Add error handler for uncaught errors
 window.addEventListener('error', (event) => {
@@ -41,11 +40,9 @@ try {
   root.render(
     <React.StrictMode>
       <HashRouter>
-        <DeploymentHandler>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </DeploymentHandler>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </HashRouter>
     </React.StrictMode>
   );

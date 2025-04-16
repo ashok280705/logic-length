@@ -5,6 +5,8 @@ import Cards2 from './cards2'
 import Footer from './footer'
 import BigCard from './big_cards'
 import Payment from './Payment'
+import { useAuth } from '../config/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
   const [loading, setLoading] = useState(true);
@@ -19,6 +21,18 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
     level: 1,
     xp: 30
   });
+  const [error, setError] = useState(null);
+  
+  const { currentUser, userProfile } = useAuth();
+  const navigate = useNavigate();
+
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!currentUser && !localStorage.getItem('user')) {
+      console.log("No user found - redirecting to login");
+      navigate('/login');
+    }
+  }, [currentUser, navigate]);
   
   // Sync with parent component's zone state
   useEffect(() => {
@@ -54,31 +68,116 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
   };
   
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
+    let isMounted = true;
     
-    // Get user data from localStorage
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const parsedUser = JSON.parse(userStr);
-      setUserData(parsedUser);
-      setFormData(parsedUser);
-    } else {
-      // Default user data if none exists
-      const defaultUser = {
-        username: 'Anuj Mayekar',
-        coins: 100,
-        level: 1,
-        xp: 30
-      };
-      setUserData(defaultUser);
-      setFormData(defaultUser);
-    }
+    const loadUserData = async () => {
+      setLoading(true);
+      try {
+        // Try to get user data from multiple sources
+        
+        // 1. First try from AuthContext userProfile
+        if (userProfile) {
+          console.log("Loading user from AuthContext userProfile");
+          setUserData(userProfile);
+          setFormData(userProfile);
+        } 
+        // 2. Then try from localStorage
+        else {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            try {
+              console.log("Loading user from localStorage");
+              const parsedUser = JSON.parse(userStr);
+              
+              // Make sure we have required fields
+              const validatedUser = {
+                username: parsedUser.username || 'User',
+                coins: parseInt(parsedUser.coins || 0),
+                level: parseInt(parsedUser.level || 1),
+                xp: parseInt(parsedUser.xp || 30),
+                ...parsedUser
+              };
+              
+              if (isMounted) {
+                setUserData(validatedUser);
+                setFormData(validatedUser);
+              }
+            } catch (parseError) {
+              console.error("Error parsing user data:", parseError);
+              setError("Failed to load user data");
+              
+              // Set default user data
+              const defaultUser = {
+                username: 'Guest User',
+                coins: 100,
+                level: 1,
+                xp: 30
+              };
+              
+              if (isMounted) {
+                setUserData(defaultUser);
+                setFormData(defaultUser);
+              }
+            }
+          } else {
+            console.warn("No user data found in localStorage");
+            // Default user data if none exists
+            const defaultUser = {
+              username: 'Guest User',
+              coins: 100,
+              level: 1,
+              xp: 30
+            };
+            
+            if (isMounted) {
+              setUserData(defaultUser);
+              setFormData(defaultUser);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error loading user data:", err);
+        if (isMounted) {
+          setError("Failed to load user data");
+        }
+      } finally {
+        // Simulate minimum loading time
+        setTimeout(() => {
+          if (isMounted) {
+            setLoading(false);
+          }
+        }, 1000);
+      }
+    };
     
-    return () => clearTimeout(timer);
-  }, []);
+    loadUserData();
+    
+    // Listen for coin balance updates
+    const handleCoinUpdate = (event) => {
+      try {
+        const { newBalance, userData: updatedUserData } = event.detail;
+        
+        if (updatedUserData && isMounted) {
+          // Use the full user data if available
+          setUserData(updatedUserData);
+          setFormData(updatedUserData);
+        } else if (newBalance !== undefined && isMounted) {
+          // Otherwise just update the coins
+          setUserData(prev => ({ ...prev, coins: newBalance }));
+          setFormData(prev => ({ ...prev, coins: newBalance }));
+        }
+      } catch (err) {
+        console.error("Error handling coin update:", err);
+      }
+    };
+    
+    window.addEventListener('coinBalanceUpdated', handleCoinUpdate);
+    
+    return () => {
+      isMounted = false;
+      window.removeEventListener('coinBalanceUpdated', handleCoinUpdate);
+    };
+  }, [userProfile]);
   
   // Random statuses for demo
   useEffect(() => {
@@ -125,19 +224,24 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
   
   // Save profile changes
   const saveProfile = () => {
-    localStorage.setItem('user', JSON.stringify(formData));
-    setUserData(formData);
-    setShowEditModal(false);
-    
-    // Show success notification (optional)
-    const notification = document.createElement('div');
-    notification.className = 'fixed top-5 right-5 bg-green-500 text-white p-3 rounded-lg shadow-lg animate-fade-in-out z-50';
-    notification.textContent = 'Profile updated successfully!';
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
+    try {
+      localStorage.setItem('user', JSON.stringify(formData));
+      setUserData(formData);
+      setShowEditModal(false);
+      
+      // Show success notification (optional)
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-5 right-5 bg-green-500 text-white p-3 rounded-lg shadow-lg animate-fade-in-out z-50';
+      notification.textContent = 'Profile updated successfully!';
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 3000);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Failed to save profile changes. Please try again.");
+    }
   };
   
   // Function to handle opening payment modal
@@ -152,6 +256,7 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
     setShowPaymentModal(true);
   };
   
+  // Show loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-[#06013a] flex items-center justify-center">
@@ -159,6 +264,42 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
           <div className="w-24 h-24 border-t-4 border-b-4 border-purple-500 rounded-full animate-spin"></div>
           <div className="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin absolute top-4 left-4"></div>
           <div className="absolute top-10 left-10 text-white text-xl font-bold animate-pulse">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if there's a problem
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#06013a] flex items-center justify-center">
+        <div className="bg-[#0d0028] text-white p-8 rounded-xl shadow-lg max-w-md w-full">
+          <h2 className="text-2xl font-bold text-red-500 mb-4">Something went wrong</h2>
+          <p className="mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No user data found, but not in loading state
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-[#06013a] flex items-center justify-center">
+        <div className="bg-[#0d0028] text-white p-8 rounded-xl shadow-lg max-w-md w-full">
+          <h2 className="text-2xl font-bold text-yellow-500 mb-4">User data not found</h2>
+          <p className="mb-4">We couldn't load your user data. Please try logging in again.</p>
+          <button 
+            onClick={() => navigate('/login')} 
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition-colors"
+          >
+            Go to Login
+          </button>
         </div>
       </div>
     );

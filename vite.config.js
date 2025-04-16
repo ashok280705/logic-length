@@ -1,45 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
-import { writeFileSync } from 'fs'
-
-// Log environment for debugging
-console.log('Vite environment:', process.env.NODE_ENV);
-console.log('Building for production:', process.env.NODE_ENV === 'production');
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    // Custom plugin to create _redirects file for Netlify or Vercel
-    {
-      name: 'create-deployment-files',
-      closeBundle: () => {
-        console.log('Creating deployment files...');
-        
-        // Create Netlify _redirects file for SPA routing
-        try {
-          writeFileSync('dist/_redirects', '/* /index.html 200');
-          console.log('Created Netlify _redirects file');
-        } catch (error) {
-          console.error('Error creating _redirects file:', error);
-        }
-        
-        // Create Vercel config
-        try {
-          const vercelConfig = {
-            "rewrites": [
-              { "source": "/(.*)", "destination": "/index.html" }
-            ]
-          };
-          writeFileSync('dist/vercel.json', JSON.stringify(vercelConfig, null, 2));
-          console.log('Created Vercel config file');
-        } catch (error) {
-          console.error('Error creating vercel.json:', error);
-        }
-      }
-    }
-  ],
+  plugins: [react()],
   server: {
     port: 3000,
     proxy: {
@@ -72,8 +37,8 @@ export default defineConfig({
     // Create 200.html file for SPA routing to support direct URL access
     copyPublicDir: true
   },
-  // Use relative paths for assets to support subdirectory deployments
-  base: './',
+  // Change from relative to absolute paths for Render deployment
+  base: '/',
   // Configure preview server
   preview: {
     port: 3000,

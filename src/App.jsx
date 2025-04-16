@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./components/navbar.jsx";
 import Main_bar from "./components/main_bar.jsx";
@@ -42,24 +42,9 @@ const App = () => {
   const { currentUser, userProfile, loading } = useAuth();
   const navigate = useNavigate();
   
-  // Debug logging for deployment issues
-  useEffect(() => {
-    console.log('======= App Component Mounted =======');
-    console.log('Current Environment:', process.env.NODE_ENV);
-    console.log('Current User:', currentUser ? 'Logged in' : 'Not logged in');
-    console.log('User Profile:', userProfile ? 'Available' : 'Not available');
-    console.log('localStorage user data:', localStorage.getItem('user') ? 'Present' : 'Not present');
-    console.log('Auth Loading State:', loading);
-    console.log('Current Path:', window.location.pathname);
-    console.log('Current Hash:', window.location.hash);
-    console.log('====================================');
-  }, [currentUser, userProfile, loading]);
-  
   // Check if user is authenticated either via Firebase or localStorage
   const isAuthenticated = () => {
-    const authState = currentUser || localStorage.getItem('user');
-    console.log('Auth Check Result:', !!authState);
-    return authState;
+    return currentUser || localStorage.getItem('user');
   };
 
   // Check if user has enough coins for a game

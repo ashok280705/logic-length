@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import session from 'express-session';
 import http from 'http';
 
@@ -40,8 +42,11 @@ import paymentRoutes from './routes/payment.js';
 
 // Console log for debugging
 console.log('Server loaded, Socket.io Server available:', !!Server);
-
-dotenv.config();
+console.log('Environment variables loaded:', {
+  PORT: process.env.PORT,
+  NODE_ENV: process.env.NODE_ENV,
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID ? '✓ Present' : '✗ Missing'
+});
 
 const app = express();
 const server = http.createServer(app);

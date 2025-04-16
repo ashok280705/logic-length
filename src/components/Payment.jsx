@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateUserCoins } from '../services/authService.js';
+import axios from 'axios';
 
 const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
   const [selectedPackage, setSelectedPackage] = useState(null);
@@ -11,6 +12,30 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
   const [verifyMode, setVerifyMode] = useState(false);
   const [currentZone, setCurrentZone] = useState(zoneMode);
   const navigate = useNavigate();
+
+  // Define the server URL
+  const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:5002';
+
+  // Load Razorpay script
+  useEffect(() => {
+    const loadRazorpayScript = () => {
+      return new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = () => {
+          resolve(true);
+        };
+        script.onerror = () => {
+          resolve(false);
+          console.error('Razorpay SDK failed to load');
+        };
+        document.body.appendChild(script);
+      });
+    };
+    
+    loadRazorpayScript();
+  }, []);
 
   useEffect(() => {
     // Load user data when component mounts
@@ -52,7 +77,7 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
     setError(null); // Clear any previous errors
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (!selectedPackage) {
       setError('Please select a package first');
       return;
@@ -67,31 +92,122 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
     // Direct addition in Coin Zone, payment gateway in Prime Zone
     if (activeZone === 'coin') {
       // For Coin Zone: directly add coins without payment gateway
-      handleDirectCoinAddition(userData, selectedPackage.coins, selectedPackage, onSuccess, setSuccess, setSelectedPackage, setUserData);
+      await handleDirectCoinAddition(userData, selectedPackage.coins, selectedPackage);
     } else {
-      // For Prime Zone: Use normal payment flow
-      // Store selected package in localStorage for verification when user returns
-      localStorage.setItem('pendingPackage', JSON.stringify({
-        ...selectedPackage,
-        timestamp: Date.now() // Add timestamp for verification
-      }));
-      
-      // Redirect to Razorpay payment link
+      // For Prime Zone: Use Razorpay payment flow
       try {
-        // Using the provided Razorpay payment link
-        window.open('https://razorpay.me/@logic-length', '_blank');
-        setVerifyMode(true);
+        // Create an order on the server
+        const response = await axios.post(`${SERVER_URL}/api/payment/create-order`, {
+          amount: selectedPackage.price,
+          package: selectedPackage
+        });
+        
+        console.log('Order created:', response.data);
+        
+        if (response.data.success) {
+          // If we got a direct payment link, use that (fallback approach)
+          if (response.data.paymentLink) {
+            // Store selected package in localStorage for verification when user returns
+            localStorage.setItem('pendingPackage', JSON.stringify({
+              ...selectedPackage,
+              timestamp: Date.now(),
+              orderId: response.data.orderId
+            }));
+            
+            // Redirect to Razorpay payment link
+            window.open(response.data.paymentLink, '_blank');
+            setVerifyMode(true);
+          } else {
+            // Use the integrated Razorpay checkout
+            const options = {
+              key: response.data.key,
+              amount: response.data.amount,
+              currency: response.data.currency || 'INR',
+              name: 'Logic Length',
+              description: `${selectedPackage.name} - ${selectedPackage.coins} Coins`,
+              order_id: response.data.orderId,
+              handler: async function (response) {
+                try {
+                  console.log('Payment successful:', response);
+                  
+                  // Verify payment with our server
+                  const verifyResponse = await axios.post(`${SERVER_URL}/api/payment/verify`, {
+                    orderId: response.razorpay_order_id,
+                    paymentId: response.razorpay_payment_id,
+                    signature: response.razorpay_signature,
+                    userId: userData.userId
+                  });
+                  
+                  if (verifyResponse.data.success) {
+                    // If successful, update the user's coins locally
+                    const updatedUser = {
+                      ...userData,
+                      coins: parseInt(userData.coins || 0) + selectedPackage.coins
+                    };
+                    
+                    // Update localStorage
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+                    
+                    // Update state
+                    setUserData(updatedUser);
+                    setSuccess(true);
+                    setSelectedPackage(null);
+                    
+                    // Dispatch event to update UI
+                    window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
+                      detail: {
+                        newBalance: updatedUser.coins,
+                        userData: updatedUser
+                      }
+                    }));
+                    
+                    // Call success callback
+                    if (onSuccess) {
+                      onSuccess(selectedPackage.coins);
+                    }
+                    
+                    // Remove pending package
+                    localStorage.removeItem('pendingPackage');
+                  }
+                } catch (error) {
+                  console.error('Error verifying payment:', error);
+                  setError('Failed to verify payment. Please contact support.');
+                } finally {
+                  setLoading(false);
+                }
+              },
+              prefill: {
+                name: userData?.username || '',
+                email: userData?.email || '',
+              },
+              theme: {
+                color: '#6320dd',
+              },
+              modal: {
+                ondismiss: function() {
+                  console.log('Checkout form closed');
+                  setLoading(false);
+                }
+              }
+            };
+            
+            // Open Razorpay checkout form
+            const razorpay = new window.Razorpay(options);
+            razorpay.open();
+          }
+        } else {
+          throw new Error('Failed to create order');
+        }
       } catch (error) {
-        console.error('Failed to redirect to payment page:', error);
-        setError('Failed to open payment page. Please try again.');
-      } finally {
+        console.error('Payment error:', error);
+        setError('Failed to process payment. Please try again.');
         setLoading(false);
       }
     }
   };
 
   // Direct coin addition handler when a package is selected
-  const handleDirectCoinAddition = async (userData, coinsToAdd, packageData, onSuccess, setSuccess, setSelectedPackage, setUserData) => {
+  const handleDirectCoinAddition = async (userData, coinsToAdd, packageData) => {
     try {
       console.log("Processing direct coin addition:", coinsToAdd);
       
@@ -153,7 +269,7 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
             if (window.history.length > 1) {
               window.history.back();
             } else {
-              window.location.href = '/home';
+              navigate('/home');
             }
           }, 1500);
           
@@ -180,17 +296,19 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
         if (window.history.length > 1) {
           window.history.back();
         } else {
-          window.location.href = '/home';
+          navigate('/home');
         }
       }, 1500);
       
     } catch (error) {
       console.error("Error during coin addition:", error);
       alert("An error occurred: " + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleVerifyPayment = () => {
+  const handleVerifyPayment = async () => {
     setLoading(true);
     setError(null);
     
@@ -198,77 +316,62 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       // Get pending package from localStorage
       const pendingPackageStr = localStorage.getItem('pendingPackage');
       if (!pendingPackageStr) {
-        throw new Error('No pending payment found. Please select a package first.');
+        setError('No pending payment found. Please try again.');
+        setLoading(false);
+        return;
       }
       
       const pendingPackage = JSON.parse(pendingPackageStr);
       
-      // Verify user is logged in
-      if (!userData) {
-        throw new Error('Please login to continue');
+      // Check if the package is still valid (not expired)
+      const now = Date.now();
+      const timestamp = pendingPackage.timestamp || 0;
+      const diff = now - timestamp;
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      
+      if (diff > maxAge) {
+        setError('Payment session expired. Please select a package and try again.');
+        localStorage.removeItem('pendingPackage');
+        setVerifyMode(false);
+        setLoading(false);
+        return;
       }
       
-      // Get fresh user data from localStorage
-      const userStr = localStorage.getItem('user');
-      if (!userStr) throw new Error('User data not found');
+      // Call Firebase to update user coins
+      const result = await updateUserCoins(pendingPackage.coins, 'purchase', null);
       
-      const user = JSON.parse(userStr);
-      
-      // Calculate new coin balance
-      const currentCoins = parseInt(user.coins) || 0;
-      const coinsToAdd = parseInt(pendingPackage.coins);
-      const totalCoins = currentCoins + coinsToAdd;
-      
-      console.log('Current coins:', currentCoins);
-      console.log('Adding coins:', coinsToAdd);
-      console.log('New total:', totalCoins);
-
-      // Create updated user object
-      const updatedUser = {
-        ...user,
-        coins: totalCoins,
-        transactions: [
-          ...(user.transactions || []),
-          {
-            amount: coinsToAdd,
-            paymentId: 'manual_verify_' + Date.now(),
-            type: 'purchase',
-            date: new Date().toISOString(),
-            price: pendingPackage.price
+      if (result.success) {
+        // Update local storage with updated user data
+        localStorage.setItem('user', JSON.stringify(result.userData));
+        
+        // Update state
+        setUserData(result.userData);
+        setSuccess(true);
+        
+        // Dispatch event to update UI
+        window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
+          detail: {
+            newBalance: result.userData.coins,
+            userData: result.userData
           }
-        ]
-      };
-
-      // Save to localStorage
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      // Update state
-      setUserData(updatedUser);
-      setSuccess(true);
-      setSelectedPackage(null);
-      setVerifyMode(false);
-      
-      // Clear pending package
-      localStorage.removeItem('pendingPackage');
-      
-      // Call success callback
-      if (onSuccess) {
-        onSuccess(coinsToAdd);
+        }));
+        
+        // Call success callback
+        if (onSuccess) {
+          onSuccess(pendingPackage.coins);
+        }
+        
+        // Remove pending package
+        localStorage.removeItem('pendingPackage');
+        
+        // Reset verification mode
+        setVerifyMode(false);
+      } else {
+        throw new Error(result.error || 'Failed to add coins');
       }
-      
-      // Broadcast coin update event to refresh all components
-      window.dispatchEvent(new CustomEvent('coinBalanceUpdated', { 
-        detail: { newBalance: totalCoins } 
-      }));
-      
-      // Force a reload of the main page to update all coin displays
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-      
     } catch (error) {
-      console.error('Error verifying payment:', error);
-      setError(error.message || 'Failed to verify payment. Please try again.');
+      console.error('Verification error:', error);
+      setError('Failed to verify payment: ' + error.message);
     } finally {
       setLoading(false);
     }
