@@ -31,14 +31,19 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html')
       }
     },
-    // Ensure assets are referenced with relative paths
+    // Ensure assets are referenced with correct paths
     assetsDir: 'assets',
     assetsInlineLimit: 4096,
-    // Create 200.html file for SPA routing to support direct URL access
-    copyPublicDir: true
+    // Create necessary HTML files for SPA routing
+    copyPublicDir: true,
+    // Preserve error stack information even in production
+    sourcemap: true,
+    minify: {
+      keepNames: true
+    }
   },
-  // Change from relative to absolute paths for Render deployment
-  base: '/',
+  // Use relative paths for Render deployment with HashRouter
+  base: '',
   // Configure preview server
   preview: {
     port: 3000,

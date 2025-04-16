@@ -1,73 +1,78 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
+import App from './App';
 import './index.css';
 import { HashRouter } from 'react-router-dom';
 import { AuthProvider } from './config/AuthContext';
 
-// Add error handler for uncaught errors
+// A simplified error boundary component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('React Error Boundary caught an error:', error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="error-container" style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+          <h2 style={{ color: '#e74c3c' }}>Oops! Something went wrong</h2>
+          <p>The application encountered an unexpected error.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ 
+              padding: '10px 20px', 
+              background: '#3498db', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '4px', 
+              cursor: 'pointer' 
+            }}
+          >
+            Reload Application
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Simple global error handler for non-React errors
 window.addEventListener('error', (event) => {
   console.error('Global error caught:', event.error);
-  // Prevent the app from crashing completely
-  event.preventDefault();
-  
-  // Log detailed error information
-  console.group('Detailed Error Information');
-  console.error('Error Message:', event.error?.message || 'Unknown error');
-  console.error('Stack Trace:', event.error?.stack || 'No stack trace available');
-  console.error('Error Location:', `${event.filename || 'Unknown file'}, Line: ${event.lineno || 'Unknown'}, Column: ${event.colno || 'Unknown'}`);
-  console.groupEnd();
 });
 
-// Add unhandled promise rejection handler
+// Simple unhandled promise rejection handler
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled Promise Rejection:', event.reason);
-  event.preventDefault();
 });
 
-// Add manual app initialization status tracking
-window.appInitialized = false;
+// Find the root element
+const rootElement = document.getElementById('root');
 
-// Create root and render app
-try {
-  const rootElement = document.getElementById('root');
-  if (!rootElement) {
-    throw new Error('Root element not found in the DOM');
-  }
-  
-  const root = ReactDOM.createRoot(rootElement);
-  
-  root.render(
+// Render the app with the error boundary
+if (rootElement) {
+  ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <HashRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </HashRouter>
+      <ErrorBoundary>
+        <HashRouter>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </HashRouter>
+      </ErrorBoundary>
     </React.StrictMode>
   );
-  
-  // Set flag to indicate successful initialization
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      window.appInitialized = true;
-      console.log('React application successfully initialized');
-    }, 1000);
-  });
-} catch (error) {
-  console.error('Failed to initialize React application:', error);
-  // Show a fallback error message in the DOM
-  const rootElement = document.getElementById('root');
-  if (rootElement) {
-    rootElement.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; text-align: center; padding: 20px;">
-        <h2>Application Error</h2>
-        <p>We encountered a problem while loading the application.</p>
-        <p style="color: #ff4757; margin: 10px 0;">Error: ${error.message || 'Unknown error'}</p>
-        <button onclick="window.location.reload()" style="padding: 10px 20px; background: #6320dd; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">
-          Reload Application
-        </button>
-      </div>
-    `;
-  }
+} else {
+  console.error('Root element not found. Cannot render the application.');
 }

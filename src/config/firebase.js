@@ -13,9 +13,55 @@ const firebaseConfig = {
   appId: "1:614855858131:web:c3b095a71721157569c126" // From your existing FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Initialize Firebase with proper error handling
+let app;
+let auth;
+let db;
+
+try {
+  console.log("Initializing Firebase...");
+  app = initializeApp(firebaseConfig);
+  
+  console.log("Initializing Firebase Auth...");
+  auth = getAuth(app);
+  
+  console.log("Initializing Firestore...");
+  db = getFirestore(app);
+  
+  console.log("Firebase services initialized successfully");
+} catch (error) {
+  console.error("CRITICAL ERROR: Failed to initialize Firebase:", error);
+  
+  // Create dummy implementations for graceful degradation
+  app = {};
+  
+  auth = {
+    currentUser: null,
+    onAuthStateChanged: (callback) => {
+      console.warn("Using dummy auth.onAuthStateChanged");
+      // Call the callback with null to indicate no user
+      setTimeout(() => callback(null), 1000);
+      // Return a dummy unsubscribe function
+      return () => {};
+    },
+    signOut: async () => {
+      console.warn("Using dummy auth.signOut");
+      localStorage.removeItem('user');
+      return Promise.resolve();
+    }
+  };
+  
+  db = {
+    collection: () => ({
+      doc: () => ({
+        get: async () => Promise.resolve({
+          exists: () => false,
+          data: () => null
+        }),
+        set: async () => Promise.resolve()
+      })
+    })
+  };
+}
 
 export { app, auth, db }; 

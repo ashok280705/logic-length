@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }) => {
           try {
             // Get user profile from Firestore
             const profile = await getUserProfile(user.uid);
-            console.log('Retrieved user profile from Firestore');
+            console.log('Retrieved user profile from Firestore:', profile);
             
             // Merge any existing fields from localStorage if present
             const cachedUserStr = localStorage.getItem('user');
@@ -57,10 +57,10 @@ export const AuthProvider = ({ children }) => {
             
             const mergedProfile = {
               ...cachedUser,
-              ...profile,
+              ...(profile || {}),
               userId: user.uid,
               email: user.email,
-              username: profile.username || user.displayName || user.email.split('@')[0],
+              username: (profile && profile.username) || user.displayName || user.email.split('@')[0],
             };
             
             setUserProfile(mergedProfile);
@@ -104,6 +104,9 @@ export const AuthProvider = ({ children }) => {
             // On first load, if we have cached user but Firebase hasn't initialized yet,
             // don't clear the user data immediately
             console.log('Keeping cached user data until auth fully initializes');
+            
+            // Still set loading to false
+            setLoading(false);
           } else {
             // Otherwise clear the user data
             console.log('Clearing user data');

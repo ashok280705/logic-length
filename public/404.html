@@ -1,45 +1,69 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Page Not Found - Logic Length</title>
-  <script>
-    // Redirect all unknown routes to the React app
-    // This allows React Router to handle the route
-    var path = window.location.pathname;
-    var redirectURL = window.location.origin + '/#' + path;
-    window.location.replace(redirectURL);
-  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logic-Length - Page Not Found</title>
   <style>
     body {
-      background-color: #0c0124;
-      color: white;
-      font-family: 'Roboto', sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom right, #0a001a, #1a0050);
+      font-family: 'Roboto', sans-serif;
+      color: white;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       text-align: center;
     }
-    .container {
-      max-width: 600px;
-      padding: 20px;
-    }
     h1 {
-      color: #b69fff;
-      font-size: 2rem;
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(90deg, #ff00cc, #3333ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
     p {
-      margin: 20px 0;
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      max-width: 600px;
+      padding: 0 20px;
+    }
+    .btn {
+      display: inline-block;
+      background: linear-gradient(90deg, #ff00cc, #3333ff);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
     }
   </style>
+  <script>
+    // Redirect to the home page after 5 seconds
+    window.onload = function() {
+      setTimeout(function() {
+        window.location.href = '/';
+      }, 5000);
+    };
+  </script>
 </head>
 <body>
-  <div class="container">
-    <h1>Redirecting...</h1>
-    <p>If you are not redirected automatically, <a href="/" style="color: #b69fff;">click here</a> to go to the home page.</p>
-  </div>
+  <h1>404 - Page Not Found</h1>
+  <p>Oops! The page you are looking for doesn't exist or has been moved.</p>
+  <p>You will be redirected to the home page in 5 seconds...</p>
+  <a href="/" class="btn">Go Home Now</a>
 </body>
 </html> 

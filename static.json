@@ -12,5 +12,11 @@
     "/assets/**": {
       "Cache-Control": "public, max-age=31536000, immutable"
     }
+  },
+  "redirects": {
+    "/api/*": {
+      "url": "https://logic-length.onrender.com/:splat",
+      "status": 200
+    }
   }
 }

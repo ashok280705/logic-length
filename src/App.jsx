@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./components/navbar.jsx";
 import Main_bar from "./components/main_bar.jsx";
@@ -24,6 +24,30 @@ import MultiplayerChessPage from "./pages/MultiplayerChess.jsx";
 import { useAuth } from "./config/AuthContext.jsx";
 import { updateUserCoins } from "./services/authService.js";
 
+// Fallback component when app is loading or fails to load
+const AppFallback = ({ error }) => {
+  return (
+    <div className="min-h-screen bg-[#06013a] flex flex-col items-center justify-center text-white p-4">
+      <div className="w-24 h-24 border-t-4 border-b-4 border-purple-500 rounded-full animate-spin mb-8"></div>
+      <h1 className="text-3xl font-bold mb-4">Logic Length Games</h1>
+      {error ? (
+        <>
+          <p className="text-red-400 text-lg mb-4">There was a problem initializing the app</p>
+          <p className="bg-[#150a48] p-4 rounded max-w-lg mb-6">{error.toString()}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-lg"
+          >
+            Try Again
+          </button>
+        </>
+      ) : (
+        <p className="text-lg">Loading amazing game experience...</p>
+      )}
+    </div>
+  );
+};
+
 // Game coin requirements
 const GAME_COSTS = {
   tictactoe: 10,
@@ -39,8 +63,37 @@ const GAME_COSTS = {
 };
 
 const App = () => {
-  const { currentUser, userProfile, loading } = useAuth();
+  const { currentUser, userProfile, loading, error } = useAuth();
   const navigate = useNavigate();
+  const [appError, setAppError] = useState(null);
+  
+  // Debugging useEffect to track state changes
+  useEffect(() => {
+    console.log("App state updated:");
+    console.log("- Loading:", loading);
+    console.log("- Current user:", currentUser ? "Yes" : "No");
+    console.log("- User profile:", userProfile ? "Yes" : "No");
+    console.log("- Error:", error || "None");
+    
+    // Check localStorage for user data
+    try {
+      const storedUser = localStorage.getItem('user');
+      console.log("- localStorage user:", storedUser ? "Present" : "Not found");
+    } catch (e) {
+      console.error("Error checking localStorage:", e);
+    }
+  }, [loading, currentUser, userProfile, error]);
+  
+  // Handle any app level errors
+  useEffect(() => {
+    const handleError = (event) => {
+      console.error("Unhandled error caught:", event.error);
+      setAppError(event.error);
+    };
+    
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
   
   // Check if user is authenticated either via Firebase or localStorage
   const isAuthenticated = () => {
@@ -103,7 +156,7 @@ const App = () => {
         return false;
       }
       
-      // Check if user has enough coins - IMPORTANT CHECK
+      // Check if user has enough coins
       const currentCoins = parseInt(userData.coins) || 0;
       if (currentCoins < cost) {
         console.error(`Not enough coins. Has: ${currentCoins}, Needs: ${cost}`);
@@ -167,17 +220,14 @@ const App = () => {
     }
   };
   
+  // If there's an app-level error, show the fallback screen
+  if (appError) {
+    return <AppFallback error={appError} />;
+  }
+  
   // If auth loading, show a loading spinner instead of redirecting
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#06013a] flex items-center justify-center">
-        <div className="relative">
-          <div className="w-24 h-24 border-t-4 border-b-4 border-purple-500 rounded-full animate-spin"></div>
-          <div className="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin absolute top-4 left-4"></div>
-          <div className="absolute top-10 left-10 text-white text-xl font-bold animate-pulse">Loading...</div>
-        </div>
-      </div>
-    );
+    return <AppFallback />;
   }
 
   return (
@@ -418,7 +468,7 @@ const App = () => {
             isAuthenticated() ? (
               <ErrorBoundary>
                 <div className="min-h-screen bg-gradient-to-b from-[#0c0124] via-[#12002e] to-[#160041]">
-                  <Navbar onLogout={logout} user={userProfile} />
+                  <Navbar />
                   <div className="pt-24">
                     <div className="container mx-auto px-4">
                       <h1 className="text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 mb-8">
@@ -427,7 +477,7 @@ const App = () => {
                       <MultiplayerProvider>
                         <MultiplayerTicTacToe 
                           cost={GAME_COSTS['multiplayer-tictactoe']} 
-                          deductCoins={() => deductCoins(GAME_COSTS['multiplayer-tictactoe'], 'multiplayer-tictactoe')} 
+                          deductCoins={() => deductCoins('multiplayer-tictactoe')} 
                           user={userProfile} 
                         />
                       </MultiplayerProvider>

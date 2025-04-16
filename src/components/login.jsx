@@ -454,7 +454,7 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
           <div className="panel-content">
             {/* Brand section */}
             <div className="brand-section">
-              <img src="/logo.png" alt="Logic Length Logo" className="login-logo" />
+              <img src="logo.png" alt="Logic Length Logo" className="login-logo" />
               <h1 className="site-title">LOGIC<span>LENGTH</span></h1>
               <p className="site-subtitle">Challenge Your Mind, Expand Your Limits</p>
             </div>
