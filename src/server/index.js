@@ -66,13 +66,29 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true
   },
-  pingTimeout: 30000, // Increase ping timeout to 30 seconds
-  pingInterval: 25000, // Ping clients every 25 seconds
-  transports: ['websocket', 'polling'], // Support both transport methods
-  connectTimeout: 20000, // Increase connection timeout
-  allowUpgrades: true, // Allow transport upgrades
-  maxHttpBufferSize: 1e8, // Increase buffer size for larger payloads
-  path: '/socket.io/', // Explicit path to avoid issues
+  pingTimeout: 60000, // Increased to 60 seconds
+  pingInterval: 25000, // Keep ping interval at 25 seconds
+  transports: ['websocket', 'polling'], // Support both WebSocket and polling
+  connectTimeout: 45000, // Increased connection timeout
+  allowUpgrades: true,
+  maxHttpBufferSize: 1e8,
+  path: '/socket.io/',
+  // Add new configurations for better reliability
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  randomizationFactor: 0.5,
+  // Enable compression
+  perMessageDeflate: {
+    threshold: 2048 // Only compress data above 2KB
+  },
+  // Connection stabilization
+  upgradeTimeout: 30000,
+  rememberUpgrade: true,
+  // Error handling
+  forceNew: true,
+  autoConnect: true
 });
 
 // Modified initialization with async IIFE - without MongoDB
@@ -173,13 +189,13 @@ function startListening() {
 // Socket.io setup function
 function setupSocketIO() {
   // Socket.io connection and events
-  const activeGames = new Map(); // Store active games by room ID
-  const waitingPlayers = new Map(); // Store players waiting for a match
+  const activeGames = new Map();
+  const waitingPlayers = new Map();
 
   io.on('connection', (socket) => {
     console.log('New client connected with ID:', socket.id);
     
-    // Log connection details for debugging
+    // Enhanced connection logging
     console.log('Connection details:', {
       transport: socket.conn.transport.name,
       remoteAddress: socket.handshake.address,
@@ -187,21 +203,48 @@ function setupSocketIO() {
       time: new Date().toISOString()
     });
     
-    // Set up heartbeat to detect disconnects earlier
+    // Improved heartbeat mechanism
+    let missedHeartbeats = 0;
+    const maxMissedHeartbeats = 3;
+    
     const heartbeat = setInterval(() => {
       socket.volatile.emit('ping', { timestamp: Date.now() });
     }, 25000);
     
-    // Handle unexpected disconnects
+    socket.on('pong', () => {
+      missedHeartbeats = 0; // Reset on pong received
+    });
+    
+    // Check for missed heartbeats
+    const heartbeatCheck = setInterval(() => {
+      missedHeartbeats++;
+      if (missedHeartbeats >= maxMissedHeartbeats) {
+        console.log(`Client ${socket.id} missed too many heartbeats, disconnecting...`);
+        socket.disconnect(true);
+      }
+    }, 30000);
+    
+    // Enhanced error handling
+    socket.on('error', (error) => {
+      console.error(`Socket ${socket.id} error:`, error);
+      // Attempt to reconnect on error
+      if (socket.connected) {
+        socket.disconnect().connect();
+      }
+    });
+    
+    // Clean disconnect handling
     socket.on('disconnect', (reason) => {
       console.log(`Client ${socket.id} disconnected. Reason: ${reason}`);
       clearInterval(heartbeat);
+      clearInterval(heartbeatCheck);
       handlePlayerDisconnect(socket.id);
-    });
-    
-    // Add a reconnect event handler
-    socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log(`Client ${socket.id} reconnection attempt #${attemptNumber}`);
+      
+      // Attempt to reconnect on certain disconnect reasons
+      if (reason === 'transport close' || reason === 'ping timeout') {
+        console.log(`Attempting to reconnect client ${socket.id}...`);
+        socket.connect();
+      }
     });
     
     // When a user joins the matchmaking queue
@@ -371,7 +414,25 @@ function initializeGameState(gameType) {
         board: Array(9).fill(null),
         moveCount: 0
       };
-    // Add other game types as needed
+    case 'chess':
+      const pieces = {
+        Pawn: "♙", Knight: "♘", Bishop: "♗", Rook: "♖", Queen: "♕", King: "♔",
+        pawn: "♟", knight: "♞", bishop: "♝", rook: "♜", queen: "♛", king: "♚"
+      };
+      
+      return {
+        board: [
+          [pieces.rook, pieces.knight, pieces.bishop, pieces.queen, pieces.king, pieces.bishop, pieces.knight, pieces.rook],
+          [pieces.pawn, pieces.pawn, pieces.pawn, pieces.pawn, pieces.pawn, pieces.pawn, pieces.pawn, pieces.pawn],
+          ["", "", "", "", "", "", "", ""],
+          ["", "", "", "", "", "", "", ""],
+          ["", "", "", "", "", "", "", ""],
+          ["", "", "", "", "", "", "", ""],
+          [pieces.Pawn, pieces.Pawn, pieces.Pawn, pieces.Pawn, pieces.Pawn, pieces.Pawn, pieces.Pawn, pieces.Pawn],
+          [pieces.Rook, pieces.Knight, pieces.Bishop, pieces.Queen, pieces.King, pieces.Bishop, pieces.Knight, pieces.Rook]
+        ],
+        moveHistory: []
+      };
     default:
       return {};
   }
@@ -387,6 +448,23 @@ function processGameMove(gameType, state, move) {
         ...state,
         board: newBoard,
         moveCount: state.moveCount + 1
+      };
+    case 'chess':
+      // Create a copy of the board
+      const newChessBoard = state.board.map(row => [...row]);
+      
+      // Apply the move
+      newChessBoard[move.to[0]][move.to[1]] = move.piece;
+      newChessBoard[move.from[0]][move.from[1]] = "";
+      
+      // Add to move history
+      const moveHistory = [...(state.moveHistory || []), move];
+      
+      return {
+        ...state,
+        board: newChessBoard,
+        moveHistory: moveHistory,
+        lastMove: move
       };
     default:
       return state;
@@ -424,6 +502,49 @@ function checkGameResult(gameType, state) {
       }
       
       // Game is still ongoing
+      return {
+        gameOver: false
+      };
+    case 'chess':
+      // In a real implementation, we would check for checkmate, stalemate, etc.
+      // For now, let's just use a simplified check for kings
+      
+      // Check if both kings are still on the board
+      let whiteKingFound = false;
+      let blackKingFound = false;
+      
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const piece = state.board[row][col];
+          if (piece === "♔") whiteKingFound = true;
+          if (piece === "♚") blackKingFound = true;
+        }
+      }
+      
+      if (!whiteKingFound) {
+        return {
+          gameOver: true,
+          winner: 'black'
+        };
+      }
+      
+      if (!blackKingFound) {
+        return {
+          gameOver: true,
+          winner: 'white'
+        };
+      }
+      
+      // If move history has 50+ moves (25 per player), declare a draw
+      // This is simplified, real chess has more complex draw rules
+      if (state.moveHistory && state.moveHistory.length >= 50) {
+        return {
+          gameOver: true,
+          draw: true,
+          reason: 'Game drawn due to move limit'
+        };
+      }
+      
       return {
         gameOver: false
       };

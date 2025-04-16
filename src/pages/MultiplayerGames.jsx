@@ -10,6 +10,14 @@ const MultiplayerGames = ({ games }) => {
     navigate(path);
   };
 
+  // Default games if none provided via props
+  const defaultGames = [
+    { name: "Chess", path: "/multiplayer-chess", cost: 20, new: true, description: "Challenge players to the classic game of strategy!" },
+    { name: "Tic Tac Toe", path: "/multiplayer-tictactoe", cost: 15, description: "Simple but fun! Be the first to get three in a row." }
+  ];
+
+  const displayGames = games || defaultGames;
+
   return (
     <div className="min-h-screen bg-[#0c0124]">
       <div className="max-w-7xl mx-auto p-6">
@@ -31,52 +39,44 @@ const MultiplayerGames = ({ games }) => {
         
         {/* Content area */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-2">
-            {/* Main featured game visualization */}
-            <div className="bg-gradient-to-br from-[#0a0019] to-[#1a0045] rounded-2xl p-6 h-[60vh] overflow-hidden relative shadow-2xl border border-purple-600/30">
-              {/* Game visualization */}
-              <div className="absolute inset-0 opacity-20">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle,_#8b5cf6_1px,_transparent_1px)] bg-[length:20px_20px]"></div>
-              </div>
-              
-              {/* Grid and elements */}
-              <div className="relative h-full flex flex-col items-center justify-center">
-                <div className="text-center mb-6">
-                  <h2 className="text-3xl font-bold text-white mb-2">PLAY TOGETHER</h2>
-                  <p className="text-purple-300 max-w-lg mx-auto">
-                    Challenge your friends or play against opponents from around the world 
-                    in our exciting multiplayer games.
-                  </p>
+          {/* Featured game promo - Chess */}
+          <div className="md:col-span-2 bg-gradient-to-br from-purple-900/40 to-blue-900/40 rounded-2xl p-6 border border-purple-500/30 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600/20 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none"></div>
+            
+            <div className="relative z-10">
+              <h2 className="text-3xl font-bold text-white mb-3">Multiplayer Chess</h2>
+              <p className="text-purple-200 mb-6 max-w-2xl">
+                Challenge players from around the world in this timeless game of strategy and skill. 
+                Make your moves carefully, capture your opponent's pieces, and aim for checkmate!
+              </p>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="bg-purple-900/50 px-3 py-1.5 rounded-full text-purple-200 text-sm">
+                  2 Players
                 </div>
-                
-                {/* Game board visualization */}
-                <div className="w-64 h-64 bg-purple-900/30 grid grid-cols-3 gap-1 rounded-lg border border-purple-500/50 relative">
-                  {/* TicTacToe grid representation */}
-                  {[...Array(9)].map((_, i) => (
-                    <div key={i} className="bg-purple-800/20 rounded flex items-center justify-center border border-purple-500/20">
-                      {i % 3 === 0 && <div className="w-8 h-8 rounded-full bg-purple-500/70"></div>}
-                      {i % 4 === 0 && <div className="text-blue-400 text-2xl font-bold">×</div>}
-                    </div>
-                  ))}
-                  
-                  {/* Player indicators */}
-                  <div className="absolute -bottom-16 -left-16 w-20 h-20 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
-                    <div className="text-white text-xl">P1</div>
-                  </div>
-                  <div className="absolute -top-16 -right-16 w-20 h-20 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
-                    <div className="text-white text-xl">P2</div>
-                  </div>
+                <div className="bg-purple-900/50 px-3 py-1.5 rounded-full text-purple-200 text-sm">
+                  Strategy
+                </div>
+                <div className="bg-purple-900/50 px-3 py-1.5 rounded-full text-purple-200 text-sm flex items-center">
+                  <span className="text-yellow-300 font-bold mr-1">20</span> Coins to Play
                 </div>
               </div>
+              <button 
+                onClick={() => handleGameClick("/multiplayer-chess")}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white py-3 px-8 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-purple-500/25"
+              >
+                Play Now
+              </button>
             </div>
           </div>
           
+          {/* Game list sidebar */}
           <div>
             {/* Game list */}
             <div className="bg-[#0a0019] rounded-2xl p-4 border border-purple-600/30 shadow-xl">
               <h3 className="text-xl font-bold text-white mb-4 px-2">Available Games</h3>
               <div className="space-y-3">
-                {games.map((game, index) => (
+                {displayGames.map((game, index) => (
                   <button
                     key={index}
                     onClick={() => handleGameClick(game.path)}
@@ -85,40 +85,32 @@ const MultiplayerGames = ({ games }) => {
                     <div className="flex items-center justify-between">
                       <div className="text-white font-medium text-lg">
                         {game.name}
+                        {game.new && (
+                          <span className="ml-2 bg-green-500 text-xs font-bold px-2 py-0.5 rounded-full text-white">
+                            NEW
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center">
                         <span className="text-yellow-300 font-bold text-xl mr-1">{game.cost}</span>
                         <span className="text-xs text-purple-300">COINS</span>
                       </div>
                     </div>
+                    {game.description && (
+                      <div className="text-purple-300 text-sm mt-1">{game.description}</div>
+                    )}
                   </button>
                 ))}
-                
-                {/* Highlight newest game */}
-                <button
-                  onClick={() => handleGameClick("/multiplayer-tictactoe")}
-                  className="w-full bg-gradient-to-r from-[#1a0050]/60 to-[#4a0080]/60 p-4 rounded-xl border border-purple-400/50 hover:border-purple-400 transition-all duration-300 transform hover:scale-105 text-left focus:outline-none mt-3 relative overflow-hidden"
-                >
-                  <div className="absolute top-0 right-0 bg-purple-500 text-xs text-white px-2 py-1 rounded-bl">NEW!</div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-white font-medium text-lg">
-                      Multiplayer Tic Tac Toe
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-yellow-300 font-bold text-xl mr-1">15</span>
-                      <span className="text-xs text-purple-300">COINS</span>
-                    </div>
-                  </div>
-                </button>
               </div>
-              
-              <div className="mt-6 text-center">
-                <button 
-                  onClick={() => navigate("/home")}
-                  className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
-                >
-                  Back to Home
-                </button>
+            </div>
+            
+            {/* Information card */}
+            <div className="mt-6 bg-[#0a0019] rounded-2xl p-4 border border-purple-600/30 shadow-xl">
+              <h3 className="text-xl font-bold text-white mb-2 px-2">How to Play</h3>
+              <div className="text-purple-300 text-sm space-y-2 px-2">
+                <p>Join our multiplayer games to challenge players from around the world.</p>
+                <p>Each game requires coins to play. Win to earn more coins!</p>
+                <p>If you run out of coins, you can purchase more from the payments page.</p>
               </div>
             </div>
           </div>

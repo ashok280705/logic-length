@@ -20,6 +20,7 @@ import UserProfile from "./components/UserProfile.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import { MultiplayerProvider } from "./components/multiplayer/MultiplayerContext.jsx";
 import MultiplayerTicTacToe from "./components/multiplayer/MultiplayerTicTacToe.jsx";
+import MultiplayerChessPage from "./pages/MultiplayerChess.jsx";
 import { useAuth } from "./config/AuthContext.jsx";
 import { updateUserCoins } from "./services/authService.js";
 
@@ -33,7 +34,8 @@ const GAME_COSTS = {
   game7: 20,
   game8: 25,
   'rock-paper-scissors': 15,
-  'multiplayer-tictactoe': 15
+  'multiplayer-tictactoe': 15,
+  'multiplayer-chess': 20
 };
 
 const App = () => {
@@ -260,9 +262,8 @@ const App = () => {
                 <Navbar />
                 <MultiplayerGames 
                   games={[
-                    { name: "Chess", path: "/chess", cost: GAME_COSTS.chess },
-                    { name: "Tic Tac Toe", path: "/tictactoe", cost: GAME_COSTS.tictactoe },
-                    { name: "Rock Paper Scissors", path: "/rock-paper-scissors", cost: GAME_COSTS['mines-plinko'] }
+                    { name: "Chess", path: "/multiplayer-chess", cost: GAME_COSTS['multiplayer-chess'], new: true, description: "Challenge players to the classic game of strategy!" },
+                    { name: "Tic Tac Toe", path: "/multiplayer-tictactoe", cost: GAME_COSTS['multiplayer-tictactoe'], description: "Simple but fun! Be the first to get three in a row." }
                   ]} 
                 />
               </>
@@ -392,21 +393,48 @@ const App = () => {
           } 
         />
 
-        <Route 
-          path="/multiplayer-tictactoe" 
+        {/* Add routes for multiplayer games */}
+        <Route
+          path="/multiplayer-tictactoe"
           element={
             currentUser ? (
-              <>
-                <Navbar />
-                <MultiplayerTicTacToe 
-                  cost={GAME_COSTS['multiplayer-tictactoe']} 
-                  deductCoins={() => deductCoins('multiplayer-tictactoe')} 
-                />
-              </>
+              <ErrorBoundary>
+                <div className="min-h-screen bg-gradient-to-b from-[#0c0124] via-[#12002e] to-[#160041]">
+                  <Navbar onLogout={logout} user={userProfile} />
+                  <div className="pt-24">
+                    <div className="container mx-auto px-4">
+                      <h1 className="text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 mb-8">
+                        Multiplayer Tic-Tac-Toe
+                      </h1>
+                      <MultiplayerProvider>
+                        <MultiplayerTicTacToe 
+                          cost={GAME_COSTS['multiplayer-tictactoe']} 
+                          deductCoins={() => deductCoins(GAME_COSTS['multiplayer-tictactoe'], 'multiplayer-tictactoe')} 
+                          user={userProfile} 
+                        />
+                      </MultiplayerProvider>
+                    </div>
+                  </div>
+                </div>
+              </ErrorBoundary>
             ) : (
               <Navigate to="/login" />
             )
-          } 
+          }
+        />
+
+        {/* Add the route for multiplayer chess */}
+        <Route
+          path="/multiplayer-chess"
+          element={
+            currentUser ? (
+              <ErrorBoundary>
+                <MultiplayerChessPage />
+              </ErrorBoundary>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         />
 
         {/* Payment page */}
