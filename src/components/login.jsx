@@ -147,9 +147,9 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
           this.angle = Math.random() * Math.PI * 2;
           this.opacity = Math.random() * 0.5 + 0.1;
           this.color = [
-            'rgba(155, 77, 255, ' + this.opacity + ')',
-            'rgba(0, 196, 255, ' + this.opacity + ')',
-            'rgba(98, 0, 238, ' + this.opacity + ')'
+            'rgba(255, 102, 0, ' + this.opacity + ')',  // Orange
+            'rgba(0, 191, 255, ' + this.opacity + ')',  // Cyan
+            'rgba(255, 51, 153, ' + this.opacity + ')'  // Pink
           ][Math.floor(Math.random() * 3)];
         }
         
@@ -420,15 +420,18 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
   // Loading screen UI
   if (pageLoading) {
     return (
-      <div className="loading-screen">
+      <div className="new-loading-screen">
         <div className="loading-content">
-          <div className="logo-container">
-            <div className="logo-pulse"></div>
-            <img src="/logo.png" alt="Logic Length Logo" className="logo-image" />
+          <div className="loading-logo-container">
+            <div className="loading-logo-glow"></div>
+            <img src="/logo.png" alt="Logic Length Logo" className="loading-logo-image" />
           </div>
-          <h2 className="loading-text">LOGIC<span>LENGTH</span></h2>
-          <div className="loading-bar">
-            <div className="loading-progress"></div>
+          <h2 className="loading-title">LOGIC<span>LENGTH</span></h2>
+          <div className="loading-progress-container">
+            <div className="loading-progress-bar">
+              <div className="loading-progress-fill"></div>
+            </div>
+            <div className="loading-progress-text">Initializing game environment...</div>
           </div>
         </div>
       </div>
@@ -436,75 +439,96 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
   }
 
   return (
-    <div className="login-wrapper">
-      {/* Animated background particles */}
-      <canvas ref={bgParticlesRef} className="background-particles"></canvas>
+    <div className="new-login-wrapper">
+      {/* Background elements */}
+      <div className="login-bg-gradient"></div>
+      <canvas ref={bgParticlesRef} className="login-bg-particles"></canvas>
+      <div className="login-bg-grid"></div>
       
-      {/* Main login container */}
-      <div className={`login-container ${animateForm ? 'form-visible' : ''}`}>
-        {/* Glowing elements */}
-        <div className="glow-container">
-          <div className="glow-circle"></div>
-          <div className="glow-triangle"></div>
-          <div className="glow-square"></div>
-        </div>
-        
-        {/* Glass panel */}
-        <div className="glass-panel">
-          <div className="panel-content">
-            {/* Brand section */}
-            <div className="brand-section">
-              <img src="logo.png" alt="Logic Length Logo" className="login-logo" />
-              <h1 className="site-title">LOGIC<span>LENGTH</span></h1>
-              <p className="site-subtitle">Challenge Your Mind, Expand Your Limits</p>
+      {/* Animated background elements */}
+      <div className="animated-shapes">
+        <div className="shape shape-hexagon"></div>
+        <div className="shape shape-triangle"></div>
+        <div className="shape shape-circle"></div>
+        <div className="shape shape-square"></div>
+      </div>
+      
+      {/* Main container */}
+      <div className={`new-login-container ${animateForm ? 'visible' : ''}`}>
+        <div className="login-card">
+          {/* Header section */}
+          <div className="login-header">
+            <div className="login-logo-wrapper">
+              <img src="/logo.png" alt="Logic Length Logo" className="login-logo" />
+              <div className="login-logo-glow"></div>
             </div>
+            <h1 className="login-title">
+              LOGIC<span>LENGTH</span>
+            </h1>
+            <p className="login-subtitle">Challenge Your Mind. Compete. Win.</p>
             
-            {/* Tabs */}
-            <div className="auth-tabs">
+            {/* Game stats banner */}
+            <div className="game-stats">
+              <div className="stat-item">
+                <div className="stat-icon players"></div>
+                <div className="stat-info">
+                  <div className="stat-value">8.5k+</div>
+                  <div className="stat-label">Players</div>
+                </div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-icon games"></div>
+                <div className="stat-info">
+                  <div className="stat-value">12+</div>
+                  <div className="stat-label">Games</div>
+                </div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-icon rewards"></div>
+                <div className="stat-info">
+                  <div className="stat-value">₹50k+</div>
+                  <div className="stat-label">Rewards</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Content section */}
+          <div className="login-content">
+            {/* Auth tabs */}
+            <div className="login-tabs">
               <button 
                 type="button"
-                className={`tab-btn ${isLogin ? 'active' : ''}`} 
+                className={`login-tab ${isLogin ? 'active' : ''}`} 
                 onClick={() => setIsLogin(true)}
               >
                 Sign In
               </button>
               <button 
                 type="button"
-                className={`tab-btn ${!isLogin ? 'active' : ''}`} 
+                className={`login-tab ${!isLogin ? 'active' : ''}`} 
                 onClick={() => setIsLogin(false)}
               >
-                Register
+                Create Account
               </button>
-              <div 
-                className="tab-indicator" 
-                style={{ 
-                  left: isLogin ? '0' : '50%',
-                  width: '50%'
-                }}
-              ></div>
             </div>
             
-            {/* Error message */}
+            {/* Error and success messages */}
             {error && (
-              <div className="error-message">
-                <div className="error-icon">
-                  <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z"/>
-                  </svg>
-                </div>
-                <span>{error}</span>
+              <div className="login-message error">
+                <svg viewBox="0 0 24 24" className="message-icon">
+                  <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z"/>
+                </svg>
+                <p>{error}</p>
               </div>
             )}
             
-            {/* Success message */}
             {success && (
-              <div className="success-message">
-                <div className="success-icon">
-                  <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.177-7.86l-2.765-2.767L7 12.431l3.119 3.121a1 1 0 001.414 0l5.952-5.95-1.062-1.062-5.6 5.6z"/>
-                  </svg>
-                </div>
-                <span>{success}</span>
+              <div className="login-message success">
+                <svg viewBox="0 0 24 24" className="message-icon">
+                  <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.177-7.86l-2.765-2.767L7 12.431l3.119 3.121a1 1 0 001.414 0l5.952-5.95-1.062-1.062-5.6 5.6z"/>
+                </svg>
+                <p>{success}</p>
               </div>
             )}
             
@@ -512,131 +536,131 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
             <form 
               ref={formRef}
               onSubmit={isLogin ? handleLogin : handleRegister} 
-              className="auth-form"
+              className="login-form"
               noValidate
             >
               {/* Username field */}
-              <div className={`form-group ${validationErrors.username ? 'has-error' : ''}`}>
-                <div className="input-icon">
-                  <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="currentColor" d="M12 12a5 5 0 110-10 5 5 0 010 10zm0 2a8 8 0 018 8H4a8 8 0 018-8z"/>
+              <div className={`form-field ${validationErrors.username ? 'error' : ''}`}>
+                <label htmlFor="username" className="field-label">Username</label>
+                <div className="field-wrapper">
+                  <input
+                    type="text"
+                    name="username"
+                    id="username"
+                    value={formData.username}
+                    onChange={handleInputChange}
+                    className="field-input"
+                    placeholder="Enter your username"
+                    required
+                  />
+                  <svg className="field-icon" viewBox="0 0 24 24">
+                    <path d="M12 12a5 5 0 110-10 5 5 0 010 10zm0 2a8 8 0 018 8H4a8 8 0 018-8z"/>
                   </svg>
                 </div>
-                <input
-                  type="text"
-                  name="username"
-                  id="username"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Username"
-                  aria-label="Username"
-                  required
-                />
-                <div className="input-highlight"></div>
                 {validationErrors.username && (
-                  <div className="input-error">{validationErrors.username}</div>
+                  <div className="field-error">{validationErrors.username}</div>
                 )}
               </div>
               
-              {/* Email field - show for registration or login */}
-              <div className={`form-group ${validationErrors.email ? 'has-error' : ''}`}>
-                <div className="input-icon">
-                  <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="currentColor" d="M3 3h18a1 1 0 011 1v16a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1zm17 4.238l-7.928 7.1L4 7.216V19h16V7.238zM4.511 5l7.55 6.662L19.502 5H4.511z"/>
+              {/* Email field */}
+              <div className={`form-field ${validationErrors.email ? 'error' : ''}`}>
+                <label htmlFor="email" className="field-label">Email Address</label>
+                <div className="field-wrapper">
+                  <input
+                    type="email"
+                    name="email"
+                    id="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="field-input"
+                    placeholder="Enter your email address"
+                    required
+                  />
+                  <svg className="field-icon" viewBox="0 0 24 24">
+                    <path d="M3 3h18a1 1 0 011 1v16a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1zm17 4.238l-7.928 7.1L4 7.216V19h16V7.238zM4.511 5l7.55 6.662L19.502 5H4.511z"/>
                   </svg>
                 </div>
-                <input
-                  type="email"
-                  name="email"
-                  id="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Email Address"
-                  aria-label="Email Address"
-                  required
-                />
-                <div className="input-highlight"></div>
                 {validationErrors.email && (
-                  <div className="input-error">{validationErrors.email}</div>
+                  <div className="field-error">{validationErrors.email}</div>
                 )}
               </div>
               
               {/* Password field */}
-              <div className={`form-group ${validationErrors.password ? 'has-error' : ''}`}>
-                <div className="input-icon">
-                  <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="currentColor" d="M19 10h1a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V11a1 1 0 011-1h1V9a7 7 0 0114 0v1zm-2 0V9A5 5 0 007 9v1h10zm-6 4v4h2v-4h-2z"/>
+              <div className={`form-field ${validationErrors.password ? 'error' : ''}`}>
+                <label htmlFor="password" className="field-label">Password</label>
+                <div className="field-wrapper">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    id="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="field-input"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <svg className="field-icon" viewBox="0 0 24 24">
+                    <path d="M19 10h1a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V11a1 1 0 011-1h1V9a7 7 0 0114 0v1zm-2 0V9A5 5 0 007 9v1h10zm-6 4v4h2v-4h-2z"/>
                   </svg>
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  id="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Password"
-                  aria-label="Password"
-                  required
-                />
-                <button 
-                  type="button" 
-                  className="password-toggle" 
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  <svg viewBox="0 0 24 24" width="20" height="20">
+                  <button 
+                    type="button" 
+                    className="password-toggle-btn" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
                     {showPassword ? (
-                      <path fill="currentColor" d="M17.882 19.297A10.949 10.949 0 0112 21c-5.392 0-9.878-3.88-10.819-9a10.982 10.982 0 013.34-6.066L1.392 2.808l1.415-1.415 19.799 19.8-1.415 1.414-3.31-3.31zM5.935 7.35A8.965 8.965 0 003.223 12a9.005 9.005 0 0013.201 5.838l-2.028-2.028A4.5 4.5 0 018.19 9.604L5.935 7.35zm6.979 6.978l-3.242-3.242a2.5 2.5 0 003.241 3.241zm7.893 2.264l-1.431-1.43A8.935 8.935 0 0020.777 12 9.005 9.005 0 009.552 5.338L7.974 3.76C9.221 3.27 10.58 3 12 3c5.392 0 9.878 3.88 10.819 9a10.947 10.947 0 01-2.012 4.592zm-9.084-9.084l1.974 1.974a2.5 2.5 0 00-1.974-1.974z"/>
+                      <svg viewBox="0 0 24 24">
+                        <path d="M17.882 19.297A10.949 10.949 0 0112 21c-5.392 0-9.878-3.88-10.819-9a10.982 10.982 0 013.34-6.066L1.392 2.808l1.415-1.415 19.799 19.8-1.415 1.414-3.31-3.31zM5.935 7.35A8.965 8.965 0 003.223 12a9.005 9.005 0 0013.201 5.838l-2.028-2.028A4.5 4.5 0 018.19 9.604L5.935 7.35zm6.979 6.978l-3.242-3.242a2.5 2.5 0 003.241 3.241zm7.893 2.264l-1.431-1.43A8.935 8.935 0 0020.777 12 9.005 9.005 0 009.552 5.338L7.974 3.76C9.221 3.27 10.58 3 12 3c5.392 0 9.878 3.88 10.819 9a10.947 10.947 0 01-2.012 4.592zm-9.084-9.084l1.974 1.974a2.5 2.5 0 00-1.974-1.974z"/>
+                      </svg>
                     ) : (
-                      <path fill="currentColor" d="M12 3c5.392 0 9.878 3.88 10.819 9-.94 5.12-5.427 9-10.819 9-5.392 0-9.878-3.88-10.819-9C2.121 6.88 6.608 3 12 3zm0 16a9.005 9.005 0 008.777-7 9.005 9.005 0 00-17.554 0A9.005 9.005 0 0012 19zm0-2.5a4.5 4.5 0 110-9 4.5 4.5 0 010 9zm0-2a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>
+                      <svg viewBox="0 0 24 24">
+                        <path d="M12 3c5.392 0 9.878 3.88 10.819 9-.94 5.12-5.427 9-10.819 9-5.392 0-9.878-3.88-10.819-9C2.121 6.88 6.608 3 12 3zm0 16a9.005 9.005 0 008.777-7 9.005 9.005 0 00-17.554 0A9.005 9.005 0 0012 19zm0-2.5a4.5 4.5 0 110-9 4.5 4.5 0 010 9zm0-2a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>
+                      </svg>
                     )}
-                  </svg>
-                </button>
-                <div className="input-highlight"></div>
+                  </button>
+                </div>
                 {validationErrors.password && (
-                  <div className="input-error">{validationErrors.password}</div>
+                  <div className="field-error">{validationErrors.password}</div>
                 )}
               </div>
               
               {/* Confirm Password field - only for registration */}
               {!isLogin && (
-                <div className={`form-group ${validationErrors.confirmPassword ? 'has-error' : ''}`}>
-                  <div className="input-icon">
-                    <svg viewBox="0 0 24 24" width="20" height="20">
-                      <path fill="currentColor" d="M19 10h1a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V11a1 1 0 011-1h1V9a7 7 0 0114 0v1zm-2 0V9A5 5 0 007 9v1h10zm-6 4v4h2v-4h-2z"/>
+                <div className={`form-field ${validationErrors.confirmPassword ? 'error' : ''}`}>
+                  <label htmlFor="confirmPassword" className="field-label">Confirm Password</label>
+                  <div className="field-wrapper">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      id="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      className="field-input"
+                      placeholder="Confirm your password"
+                      required
+                    />
+                    <svg className="field-icon" viewBox="0 0 24 24">
+                      <path d="M19 10h1a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V11a1 1 0 011-1h1V9a7 7 0 0114 0v1zm-2 0V9A5 5 0 007 9v1h10zm-6 4v4h2v-4h-2z"/>
                     </svg>
-                  </div>
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    id="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    className="form-input"
-                    placeholder="Confirm Password"
-                    aria-label="Confirm Password"
-                    required
-                  />
-                  <button 
-                    type="button" 
-                    className="password-toggle" 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                  >
-                    <svg viewBox="0 0 24 24" width="20" height="20">
+                    <button 
+                      type="button" 
+                      className="password-toggle-btn" 
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    >
                       {showConfirmPassword ? (
-                        <path fill="currentColor" d="M17.882 19.297A10.949 10.949 0 0112 21c-5.392 0-9.878-3.88-10.819-9a10.982 10.982 0 013.34-6.066L1.392 2.808l1.415-1.415 19.799 19.8-1.415 1.414-3.31-3.31zM5.935 7.35A8.965 8.965 0 003.223 12a9.005 9.005 0 0013.201 5.838l-2.028-2.028A4.5 4.5 0 018.19 9.604L5.935 7.35zm6.979 6.978l-3.242-3.242a2.5 2.5 0 003.241 3.241zm7.893 2.264l-1.431-1.43A8.935 8.935 0 0020.777 12 9.005 9.005 0 009.552 5.338L7.974 3.76C9.221 3.27 10.58 3 12 3c5.392 0 9.878 3.88 10.819 9a10.947 10.947 0 01-2.012 4.592zm-9.084-9.084l1.974 1.974a2.5 2.5 0 00-1.974-1.974z"/>
+                        <svg viewBox="0 0 24 24">
+                          <path d="M17.882 19.297A10.949 10.949 0 0112 21c-5.392 0-9.878-3.88-10.819-9a10.982 10.982 0 013.34-6.066L1.392 2.808l1.415-1.415 19.799 19.8-1.415 1.414-3.31-3.31zM5.935 7.35A8.965 8.965 0 003.223 12a9.005 9.005 0 0013.201 5.838l-2.028-2.028A4.5 4.5 0 018.19 9.604L5.935 7.35zm6.979 6.978l-3.242-3.242a2.5 2.5 0 003.241 3.241zm7.893 2.264l-1.431-1.43A8.935 8.935 0 0020.777 12 9.005 9.005 0 009.552 5.338L7.974 3.76C9.221 3.27 10.58 3 12 3c5.392 0 9.878 3.88 10.819 9a10.947 10.947 0 01-2.012 4.592zm-9.084-9.084l1.974 1.974a2.5 2.5 0 00-1.974-1.974z"/>
+                        </svg>
                       ) : (
-                        <path fill="currentColor" d="M12 3c5.392 0 9.878 3.88 10.819 9-.94 5.12-5.427 9-10.819 9-5.392 0-9.878-3.88-10.819-9C2.121 6.88 6.608 3 12 3zm0 16a9.005 9.005 0 008.777-7 9.005 9.005 0 00-17.554 0A9.005 9.005 0 0012 19zm0-2.5a4.5 4.5 0 110-9 4.5 4.5 0 010 9zm0-2a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>
+                        <svg viewBox="0 0 24 24">
+                          <path d="M12 3c5.392 0 9.878 3.88 10.819 9-.94 5.12-5.427 9-10.819 9-5.392 0-9.878-3.88-10.819-9C2.121 6.88 6.608 3 12 3zm0 16a9.005 9.005 0 008.777-7 9.005 9.005 0 00-17.554 0A9.005 9.005 0 0012 19zm0-2.5a4.5 4.5 0 110-9 4.5 4.5 0 010 9zm0-2a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/>
+                        </svg>
                       )}
-                    </svg>
-                  </button>
-                  <div className="input-highlight"></div>
+                    </button>
+                  </div>
                   {validationErrors.confirmPassword && (
-                    <div className="input-error">{validationErrors.confirmPassword}</div>
+                    <div className="field-error">{validationErrors.confirmPassword}</div>
                   )}
                 </div>
               )}
@@ -654,53 +678,43 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
               {/* Submit button */}
               <button 
                 type="submit" 
-                className={`submit-btn ${isLoading ? 'loading' : ''}`}
+                className={`login-submit-btn ${isLoading ? 'loading' : ''}`}
                 disabled={isLoading}
               >
                 <span className="btn-text">
                   {isLogin ? "Sign In" : "Create Account"}
                 </span>
-                <span className="btn-loader"></span>
+                {isLoading && <span className="btn-loading-spinner"></span>}
+                <span className="btn-glow"></span>
               </button>
-              
-              {/* Divider */}
-              <div className="auth-divider">
+            </form>
+            
+            {/* Social login section */}
+            <div className="social-login">
+              <div className="divider">
                 <span>or continue with</span>
               </div>
               
-              {/* Google sign-in button */}
               <button 
                 type="button" 
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
-                className="google-btn"
+                className="google-login-btn"
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" className="google-icon">
-                  <path
-                    fill="#EA4335"
-                    d="M5.266 9.765A7.077 7.077 0 0112 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 01-6.723-4.823l-4.04 3.067A11.965 11.965 0 0012 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"
-                  />
-                  <path
-                    fill="#4A90E2"
-                    d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.277 14.268A7.12 7.12 0 014.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 000 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z"
-                  />
+                <svg viewBox="0 0 24 24" className="google-icon">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
-                {isLoading ? "Please wait..." : "Continue with Google"}
+                <span className="google-btn-text">Continue with Google</span>
               </button>
-            </form>
+            </div>
             
-            {/* Footer */}
-            <div className="auth-footer">
+            {/* Switch between login/register */}
+            <div className="login-footer">
               <p>
-                {isLogin ? "New to LogicLength?" : "Already have an account?"}
+                {isLogin ? "Don't have an account?" : "Already have an account?"}
                 <button 
                   type="button"
                   onClick={() => {
@@ -711,30 +725,21 @@ const Login = ({ setUser, isLogin: initialIsLogin }) => {
                   }}
                   className="switch-auth-btn"
                 >
-                  {isLogin ? "Create an Account" : "Sign In"}
+                  {isLogin ? "Create Account" : "Sign In"}
                 </button>
               </p>
             </div>
           </div>
         </div>
-        
-        {/* Animated background shapes */}
-        <div className="shape shape-1"></div>
-        <div className="shape shape-2"></div>
-        <div className="shape shape-3"></div>
-        <div className="shape shape-4"></div>
       </div>
       
       {/* Connection status indicator */}
-      <div className={`connection-indicator ${connectionStatus}`}>
-        <div className="spinner-icon">
-          <div className="spinner-track"></div>
-          <div className="spinner-progress"></div>
-        </div>
-        <span>
+      <div className={`connection-status ${connectionStatus}`}>
+        <div className="status-icon"></div>
+        <span className="status-text">
           {connectionStatus === "checking" && "Checking connection..."}
-          {connectionStatus === "online" && "Connected"}
-          {connectionStatus === "offline" && "Offline"}
+          {connectionStatus === "online" && "Online"}
+          {connectionStatus === "offline" && "Offline Mode"}
         </span>
       </div>
     </div>
