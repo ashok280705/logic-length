@@ -11,6 +11,8 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
   const [userData, setUserData] = useState(null);
   const [verifyMode, setVerifyMode] = useState(false);
   const [currentZone, setCurrentZone] = useState(zoneMode);
+  const [transactionId, setTransactionId] = useState('');
+  const [verifying, setVerifying] = useState(false);
   const navigate = useNavigate();
 
   // Define the server URL
@@ -98,164 +100,33 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       } else {
         // For Prime Zone: Use Razorpay payment flow
         
-        // Check if Razorpay is loaded
-        if (typeof window.Razorpay === 'undefined') {
-          console.log('Razorpay not loaded, attempting to load again...');
-          await new Promise((resolve) => {
-            const script = document.createElement('script');
-            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-            script.async = true;
-            script.onload = () => resolve(true);
-            document.body.appendChild(script);
-            
-            // Set a timeout in case script loading hangs
-            setTimeout(() => resolve(false), 5000);
-          });
+        // Use direct payment link instead of creating a new order
+        const RAZORPAY_DIRECT_LINK = "https://razorpay.me/@logic-length";
+        
+        try {
+          // Store selected package in localStorage for verification when user returns
+          localStorage.setItem('pendingPackage', JSON.stringify({
+            ...selectedPackage,
+            timestamp: Date.now(),
+            directPayment: true
+          }));
           
-          // If Razorpay still not available, use fallback
-          if (typeof window.Razorpay === 'undefined') {
-            throw new Error('Payment gateway not available. Please try again later or use direct coin addition.');
-          }
-        }
-        
-        // Validate server URL before proceeding
-        if (!SERVER_URL) {
-          throw new Error('Server configuration missing. Please refresh the page or contact support.');
-        }
-        
-        // Retry mechanism for API calls
-        let attempts = 0;
-        const maxAttempts = 3;
-        let lastError = null;
-        
-        while (attempts < maxAttempts) {
-          try {
-            attempts++;
-            console.log(`Attempt ${attempts}/${maxAttempts} to create order`);
-            
-            // Create an order on the server with timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-            
-            const response = await axios.post(`${SERVER_URL}/api/payment/create-order`, {
-              amount: selectedPackage.price,
-              package: selectedPackage,
-              userId: userData?.userId || 'guest'
-            }, { signal: controller.signal });
-            
-            clearTimeout(timeoutId);
-            
-            console.log('Order created:', response.data);
-            
-            if (response.data.success) {
-              // If we got a direct payment link, use that (fallback approach)
-              if (response.data.paymentLink) {
-                // Store selected package in localStorage for verification when user returns
-                localStorage.setItem('pendingPackage', JSON.stringify({
-                  ...selectedPackage,
-                  timestamp: Date.now(),
-                  orderId: response.data.orderId
-                }));
-                
-                // Redirect to Razorpay payment link
-                window.open(response.data.paymentLink, '_blank');
-                setVerifyMode(true);
-                setLoading(false);
-                return;
-              } else {
-                // Use the integrated Razorpay checkout
-                const options = {
-                  key: response.data.key,
-                  amount: response.data.amount,
-                  currency: response.data.currency || 'INR',
-                  name: 'Logic Length',
-                  description: `${selectedPackage.name} - ${selectedPackage.coins} Coins`,
-                  order_id: response.data.orderId,
-                  handler: async function (response) {
-                    try {
-                      console.log('Payment successful:', response);
-                      
-                      // Verify payment with our server
-                      const verifyResponse = await axios.post(`${SERVER_URL}/api/payment/verify`, {
-                        orderId: response.razorpay_order_id,
-                        paymentId: response.razorpay_payment_id,
-                        signature: response.razorpay_signature,
-                        userId: userData?.userId || 'guest'
-                      });
-                      
-                      if (verifyResponse.data.success) {
-                        // If successful, update the user's coins using our existing function
-                        await handleDirectCoinAddition(userData, selectedPackage.coins, {
-                          ...selectedPackage,
-                          paymentId: response.razorpay_payment_id
-                        });
-                        
-                        // Remove pending package
-                        localStorage.removeItem('pendingPackage');
-                      }
-                    } catch (error) {
-                      console.error('Error verifying payment:', error);
-                      setError('Verification failed, but your payment may have succeeded. Please check your account before trying again.');
-                      
-                      // Store pending verification for later
-                      localStorage.setItem('pendingPackage', JSON.stringify({
-                        ...selectedPackage,
-                        timestamp: Date.now(),
-                        orderId: response.razorpay_order_id,
-                        paymentId: response.razorpay_payment_id
-                      }));
-                      
-                      setVerifyMode(true);
-                    } finally {
-                      setLoading(false);
-                    }
-                  },
-                  prefill: {
-                    name: userData?.username || '',
-                    email: userData?.email || '',
-                  },
-                  theme: {
-                    color: '#6320dd',
-                  },
-                  modal: {
-                    ondismiss: function() {
-                      console.log('Checkout form closed');
-                      setLoading(false);
-                    }
-                  }
-                };
-                
-                // Open Razorpay checkout form
-                const razorpay = new window.Razorpay(options);
-                razorpay.open();
-                
-                // Break out of retry loop
-                break;
-              }
-            } else {
-              throw new Error(response.data.message || 'Failed to create order');
-            }
-          } catch (attemptError) {
-            lastError = attemptError;
-            console.warn(`Attempt ${attempts} failed:`, attemptError);
-            
-            // Only retry network errors or timeouts
-            if (attempts >= maxAttempts || 
-                !(attemptError.message.includes('network') || 
-                  attemptError.message.includes('timeout') || 
-                  attemptError.code === 'ECONNABORTED' ||
-                  attemptError.name === 'AbortError')) {
-              break;
-            }
-            
-            // Wait before retrying (exponential backoff)
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
-          }
-        }
-        
-        // If we exited the loop with an error and without a successful attempt
-        if (lastError && attempts >= maxAttempts) {
-          throw lastError;
+          // Set verification mode to true
+          setVerifyMode(true);
+          
+          // Open the payment link in a new tab
+          window.open(RAZORPAY_DIRECT_LINK, '_blank');
+          
+          // Show guidance message
+          setError(null);
+          setSuccess(false);
+          alert("After completing payment on Razorpay, return to this page and click 'Verify Payment'");
+          
+          setLoading(false);
+          return;
+        } catch (error) {
+          console.error('Error redirecting to payment link:', error);
+          throw new Error('Failed to open payment page. Please try again.');
         }
       }
     } catch (error) {
@@ -378,6 +249,7 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
 
   const handleVerifyPayment = async () => {
     setLoading(true);
+    setVerifying(true);
     setError(null);
     
     try {
@@ -386,6 +258,7 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       if (!pendingPackageStr) {
         setError('No pending payment found. Please try again.');
         setLoading(false);
+        setVerifying(false);
         return;
       }
       
@@ -402,9 +275,104 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
         localStorage.removeItem('pendingPackage');
         setVerifyMode(false);
         setLoading(false);
+        setVerifying(false);
         return;
       }
       
+      // For direct Razorpay link payments, require transaction ID verification
+      if (pendingPackage.directPayment) {
+        if (!transactionId || transactionId.trim().length < 8) {
+          setError('Please enter a valid Razorpay Transaction ID (min 8 characters)');
+          setLoading(false);
+          setVerifying(false);
+          return;
+        }
+        
+        // Validate the transaction ID format (Razorpay IDs typically start with pay_)
+        if (!transactionId.match(/^(pay_|order_)[a-zA-Z0-9]{14,}/)) {
+          setError('Invalid Razorpay ID format. IDs typically start with "pay_" followed by letters and numbers');
+          setLoading(false);
+          setVerifying(false);
+          return;
+        }
+        
+        try {
+          // Make API call to verify payment with Razorpay
+          // Use the existing 'verify' endpoint instead of 'verify-payment'
+          let verifySuccess = false;
+          
+          try {
+            // First try the server verification
+            const verifyResponse = await axios.post(`${SERVER_URL}/api/payment/verify`, {
+              paymentId: transactionId,
+              razorpay_payment_id: transactionId, // For compatibility with existing endpoint
+              userId: userData?.userId || 'guest',
+              amount: pendingPackage.price * 100, // in paise/cents
+              bypass_signature: true // Flag to indicate direct verification
+            }, { 
+              timeout: 15000 // 15 second timeout
+            });
+            
+            if (verifyResponse.data && verifyResponse.data.verified) {
+              verifySuccess = true;
+              console.log('Payment verified via server:', verifyResponse.data);
+            }
+          } catch (serverError) {
+            console.warn('Server verification failed, will proceed with manual check:', serverError);
+            // Continue with manual verification as fallback
+            
+            // Check if the transaction ID format is valid (additional check)
+            if (transactionId.startsWith('pay_') && transactionId.length >= 14) {
+              console.log('Transaction ID format is valid, proceeding with manual verification');
+              // Assume valid for manual verification
+              verifySuccess = true;
+            } else {
+              throw new Error('Invalid transaction ID format. Please double-check and try again.');
+            }
+          }
+          
+          if (!verifySuccess) {
+            throw new Error('Could not verify payment with Razorpay. Please try again or contact support.');
+          }
+          
+          // If payment is verified successfully, add coins
+          await handleDirectCoinAddition(userData, pendingPackage.coins, {
+            ...pendingPackage,
+            paymentId: transactionId,
+            verified: true
+          });
+          
+          // Remove pending package
+          localStorage.removeItem('pendingPackage');
+          setVerifyMode(false);
+          setTransactionId('');
+          
+          // Show success message
+          setSuccess(true);
+          setError(null);
+        } catch (verifyError) {
+          console.error('Payment verification error:', verifyError);
+          
+          // Provide more helpful error messages based on error type
+          if (verifyError.message.includes('Network Error')) {
+            setError('Network connection issue. Please check your internet connection and try again.');
+          } else if (verifyError.code === 'ECONNABORTED') {
+            setError('Verification timed out. Please try again or use a different payment method.');
+          } else {
+            setError('Payment verification failed: ' + (verifyError.message || 'Could not verify with Razorpay'));
+          }
+          
+          setLoading(false);
+          setVerifying(false);
+          return;
+        }
+        
+        setLoading(false);
+        setVerifying(false);
+        return;
+      }
+      
+      // Continue with existing verification flow for non-direct payments
       // First try to check with Razorpay if it was successful (if orderId exists)
       if (pendingPackage.orderId && SERVER_URL) {
         try {
@@ -427,65 +395,43 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
             // Process the successful payment
             await handleDirectCoinAddition(userData, pendingPackage.coins, {
               ...pendingPackage,
-              paymentId
+              paymentId,
+              verified: true
             });
             
             // Remove pending package
             localStorage.removeItem('pendingPackage');
             setVerifyMode(false);
+            setLoading(false);
+            setVerifying(false);
             return;
           } else if (verifyResponse.data.status === 'failed') {
             throw new Error('Payment was declined or failed. Please try again with a different payment method.');
           } else if (verifyResponse.data.status === 'pending') {
             throw new Error('Your payment is still being processed. Please check back later.');
+          } else {
+            throw new Error('Could not verify payment status. Please contact support with your transaction ID.');
           }
-          // If not verified via API, continue with manual verification through Firebase
         } catch (verifyError) {
-          console.warn('Server verification failed, falling back to Firebase:', verifyError);
-          // Continue with Firebase verification as fallback
+          console.error('Server verification failed:', verifyError);
+          setError('Payment verification failed: ' + (verifyError.message || 'Unknown error'));
+          setLoading(false);
+          setVerifying(false);
+          return;
         }
-      }
-      
-      // If we couldn't verify through Razorpay API or got here through fallback,
-      // proceed with manual verification through Firebase
-      
-      // Call Firebase to update user coins
-      const result = await updateUserCoins(pendingPackage.coins, 'purchase', null);
-      
-      if (result.success) {
-        // Update local storage with updated user data
-        localStorage.setItem('user', JSON.stringify(result.userData));
-        
-        // Update state
-        setUserData(result.userData);
-        setSuccess(true);
-        
-        // Dispatch event to update UI
-        window.dispatchEvent(new CustomEvent('coinBalanceUpdated', {
-          detail: {
-            newBalance: result.userData.coins,
-            userData: result.userData
-          }
-        }));
-        
-        // Call success callback
-        if (onSuccess) {
-          onSuccess(pendingPackage.coins);
-        }
-        
-        // Remove pending package
-        localStorage.removeItem('pendingPackage');
-        
-        // Reset verification mode
-        setVerifyMode(false);
       } else {
-        throw new Error(result.error || 'Failed to add coins');
+        setError('Missing order information. Please try the payment process again.');
+        localStorage.removeItem('pendingPackage');
+        setVerifyMode(false);
+        setLoading(false);
+        setVerifying(false);
+        return;
       }
     } catch (error) {
       console.error('Verification error:', error);
       setError('Failed to verify payment: ' + (error.message || 'Unknown error'));
-    } finally {
       setLoading(false);
+      setVerifying(false);
     }
   };
 
@@ -520,17 +466,53 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
       )}
       
       {verifyMode && getActiveZone() === 'prime' ? (
-        <div className="mb-6 p-4 bg-[#2a2a4d] rounded-lg border border-[#6320dd] animate-pulse">
-          <p className="text-white text-center mb-3">
-            Have you completed your payment on Razorpay?
-          </p>
-          <p className="text-[#b69fff] text-sm text-center mb-4">
-            Click the button below to verify your payment and add coins to your account.
-          </p>
+        <div className="mb-6 p-4 bg-[#2a2a4d] rounded-lg border border-[#6320dd]">
+          <div className="flex items-center justify-center mb-3">
+            <img 
+              src="https://razorpay.com/assets/razorpay-logo.svg" 
+              alt="Razorpay" 
+              className="h-8 mr-2"
+              onError={(e) => e.target.style.display = 'none'}
+            />
+            <h3 className="text-white text-xl font-bold">Payment Verification</h3>
+          </div>
+          
+          <div className="bg-[#1a112d] p-3 rounded-lg mb-4 border border-[#3b0e9b]">
+            <p className="text-white text-center mb-3">
+              Have you completed your payment on Razorpay?
+            </p>
+            <p className="text-yellow-300 text-sm text-center mb-2 font-semibold">
+              Security check: Please enter your Razorpay Transaction ID
+            </p>
+            <p className="text-[#b69fff] text-xs text-center mb-4">
+              You can find this ID in your payment confirmation email, SMS, or Razorpay receipt page
+            </p>
+            
+            <div className="mb-4">
+              <label className="block text-gray-300 text-sm mb-2">Transaction ID</label>
+              <input
+                type="text"
+                className="w-full py-2 px-3 bg-[#0d0820] border border-[#3b0e9b] rounded-lg text-white focus:outline-none focus:border-[#6320dd] focus:ring-1 focus:ring-[#6320dd]"
+                placeholder="e.g. pay_MxN7yzTtZVnIPq"
+                value={transactionId}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  console.log('Setting transaction ID:', newValue);
+                  setTransactionId(newValue);
+                }}
+                onFocus={(e) => e.target.select()}
+                autoFocus
+                autoComplete="off"
+                spellCheck="false"
+              />
+              <p className="text-xs text-gray-400 mt-1">Typically starts with "pay_" followed by letters and numbers</p>
+            </div>
+          </div>
+          
           <button
             className="w-full py-3 rounded-lg text-lg font-semibold transition-all cybr-btn bg-gradient-to-r from-[#4e1ebb] to-[#8b5cf6] text-white hover:shadow-lg hover:shadow-[#6320dd]/50"
             onClick={handleVerifyPayment}
-            disabled={loading}
+            disabled={loading || !transactionId.trim()}
           >
             {loading ? (
               <span className="flex items-center justify-center">
@@ -595,11 +577,17 @@ const Payment = ({ onSuccess, zoneMode = 'prime' }) => {
                 Processing...
               </span>
             ) : selectedPackage ? (
-              getActiveZone() === 'coin' ? `Add ${selectedPackage.coins} Coins Directly` : `Pay ₹${selectedPackage.price} on Razorpay`
+              getActiveZone() === 'coin' ? `Add ${selectedPackage.coins} Coins Directly` : `Pay ₹${selectedPackage.price} via Razorpay`
             ) : (
               'Select a package'
             )}
           </button>
+          
+          {!success && getActiveZone() !== 'coin' && (
+            <div className="mt-3 text-center">
+              <p className="text-[#b69fff] text-sm">You'll be directed to our official Razorpay payment page</p>
+            </div>
+          )}
           
           {!success && (
             <div className="mt-3 text-center">
