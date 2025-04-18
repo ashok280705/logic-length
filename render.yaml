@@ -1,62 +1,39 @@
 services:
-  # Backend service
   - type: web
-    name: logic-length
+    name: logiclen-api
     env: node
+    region: ohio
     plan: free
     buildCommand: npm install
-    startCommand: node src/server/index.js
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: PORT
-        value: 5002
-      - key: MONGODB_URI
-        sync: false
-      - key: MONGODB_DIRECT_URI
-        sync: false
-      - key: SESSION_SECRET
-        sync: false
-      - key: JWT_SECRET
-        sync: false
-      - key: RAZORPAY_KEY_ID
-        sync: false
-      - key: RAZORPAY_KEY_SECRET
-        sync: false
-      - key: FIREBASE_API_KEY
-        sync: false
-      - key: FIREBASE_AUTH_DOMAIN
-        sync: false
-      - key: FIREBASE_PROJECT_ID
-        sync: false
-      - key: FIREBASE_STORAGE_BUCKET
-        sync: false
-      - key: FIREBASE_MESSAGING_SENDER_ID
-        sync: false
-      - key: FIREBASE_APP_ID
-        sync: false
+        value: 10000
       - key: RENDER
         value: "true"
-
-  # Frontend service
-  - type: web
-    name: logic-length-frontend
-    env: static
-    buildCommand: npm run render-build
-    staticPublishPath: ./dist
+    autoDeploy: true
+    headers:
+      - path: /*
+        name: Access-Control-Allow-Origin
+        value: "*"
+      - path: /*
+        name: Access-Control-Allow-Methods
+        value: "GET, POST, PUT, DELETE, OPTIONS"
+      - path: /*
+        name: Access-Control-Allow-Headers
+        value: "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      - path: /*
+        name: Connection
+        value: "keep-alive"
     routes:
       - type: rewrite
         source: /*
-        destination: /index.html
-      - type: rewrite
-        source: /api/*
-        destination: https://logic-length.onrender.com/:splat
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-store
-      - path: /*
-        name: X-Frame-Options
-        value: SAMEORIGIN
-    spa: true
-    envVars:
-      - key: VITE_SERVER_URL
-        value: https://logic-length.onrender.com
+        destination: /index.js
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+      targetMemoryPercent: 80
+      targetCPUPercent: 80 

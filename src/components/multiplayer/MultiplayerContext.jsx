@@ -23,7 +23,7 @@ export const MultiplayerProvider = ({ children }) => {
     let socketInstance = null;
     const retryDelay = 2000; // Base retry delay
     let retryAttempts = 0;
-    const maxRetries = 10;
+    const maxRetries = 15; // Increased from 10 to 15
     
     const setupSocket = () => {
       // Clean up any existing connection
@@ -32,8 +32,19 @@ export const MultiplayerProvider = ({ children }) => {
       }
       
       // Use environment variable for server URL or fallback to development URL
-      const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5002';
-      console.log('Connecting to server at:', serverUrl);
+      let serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5002';
+      console.log('Initial server URL:', serverUrl);
+      
+      // Check for potential URL format issues
+      if (serverUrl.endsWith('/')) {
+        serverUrl = serverUrl.slice(0, -1); // Remove trailing slash
+      }
+      
+      // Ensure secure protocol on production
+      if (window.location.protocol === 'https:' && serverUrl.startsWith('http:')) {
+        serverUrl = serverUrl.replace('http:', 'https:');
+        console.log('Updated to secure URL:', serverUrl);
+      }
       
       // Check if we're connecting to Render
       const isRenderConnection = serverUrl.includes('onrender.com');
@@ -43,19 +54,41 @@ export const MultiplayerProvider = ({ children }) => {
         // Make sure the serverUrl is used exactly as provided from env
         socketInstance = io(serverUrl, {
           withCredentials: true,
-          reconnectionAttempts: isRenderConnection ? 25 : 15,
+          reconnectionAttempts: isRenderConnection ? 30 : 15, // Increased for Render
           reconnectionDelay: 1000,
-          reconnectionDelayMax: 10000,
-          timeout: isRenderConnection ? 20000 : 10000,
+          reconnectionDelayMax: isRenderConnection ? 15000 : 10000, // Increased for Render
+          timeout: isRenderConnection ? 30000 : 10000, // Increased timeout for Render
           transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
           secure: serverUrl.startsWith('https'),
           path: '/socket.io/',
           autoConnect: true,
-          forceNew: true, // Create a new connection each time to avoid stale connections
+          forceNew: false, // Changed to false to avoid creating new connections unnecessarily
           reconnection: true,
           randomizationFactor: 0.5,
-          pingTimeout: isRenderConnection ? 45000 : 25000,
+          pingTimeout: isRenderConnection ? 60000 : 45000, // Increased for Render
           pingInterval: isRenderConnection ? 25000 : 20000,
+          // Additional options for XHR errors
+          xhrHeaders: {
+            'Cache-Control': 'no-cache',
+            'pragma': 'no-cache',
+            'expires': '0'
+          },
+          // Enhanced CORS handling
+          cors: {
+            origin: '*',
+            methods: ['GET', 'POST', 'OPTIONS'],
+            credentials: true,
+            allowedHeaders: ['Content-Type', 'Authorization']
+          },
+          // Adding new options for better stability
+          upgrade: true,
+          rememberUpgrade: true,
+          rejectUnauthorized: false,
+          extraHeaders: {
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+            "client-version": "1.0.0" // Tag client version for troubleshooting
+          }
         });
         
         setSocket(socketInstance);
@@ -66,12 +99,101 @@ export const MultiplayerProvider = ({ children }) => {
           setIsConnected(true);
           setConnectionError(null);
           retryAttempts = 0; // Reset retry counter on successful connection
+          
+          // Store session info
+          localStorage.setItem('socketSessionId', socketInstance.id);
+          
+          // If we were in a game when reconnection happened, attempt to rejoin
+          if (currentGame) {
+            const gameId = currentGame.roomId;
+            const userId = getUserInfo()?.userId;
+            
+            if (gameId && userId) {
+              console.log(`Attempting to recover game session for room ${gameId}`);
+              socketInstance.emit('recover_session', {
+                userId,
+                gameRoomId: gameId
+              });
+            }
+          }
+        });
+        
+        // Handle successful reconnection
+        socketInstance.on('reconnect_success', (data) => {
+          console.log('Reconnection successful:', data);
+          
+          // Notify user
+          setGameMessages(prev => [...prev, {
+            type: 'success',
+            message: 'Connection restored!'
+          }]);
+        });
+        
+        // Handle game recovery response
+        socketInstance.on('game_recovered', (gameData) => {
+          console.log('Game session recovered:', gameData);
+          
+          // Restore game state
+          setCurrentGame({
+            roomId: gameData.roomId,
+            gameType: gameData.gameType
+          });
+          
+          setGameState(gameData.state);
+          setOpponent(gameData.players.find(p => p.userId !== getUserInfo()?.userId));
+          setIsMyTurn(gameData.currentTurn === socketInstance.id);
+          
+          // Notify user
+          setGameMessages(prev => [...prev, {
+            type: 'success',
+            message: 'Game session recovered!'
+          }]);
         });
         
         socketInstance.on('connect_error', (error) => {
           console.error('Connection error:', error);
           setConnectionError(`Connection error: ${error.message}`);
           setIsConnected(false);
+          
+          // Special handling for xhr poll errors
+          if (error.message.includes('xhr poll error')) {
+            console.error('XHR Poll Error detected, implementing recovery strategy...');
+            
+            // Log diagnostic information to help debug
+            console.log('Browser info:', navigator.userAgent);
+            console.log('Current URL:', window.location.href);
+            console.log('Server URL:', serverUrl);
+            console.log('Transport options:', socketInstance.io.opts.transports);
+            
+            // Set to polling only with additional parameters that might help
+            socketInstance.io.opts.transports = ['polling'];
+            socketInstance.io.opts.polling = {
+              extraHeaders: {
+                'Cache-Control': 'no-cache',
+                'If-None-Match': Date.now().toString(),
+                'X-Client-Version': '1.0'
+              }
+            };
+            
+            // Add a small delay and implement a forceful reconnect
+            setTimeout(() => {
+              // Force close and reconnect
+              socketInstance.disconnect();
+              
+              setTimeout(() => {
+                console.log('Attempting reconnection with modified transport options...');
+                socketInstance.connect();
+              }, 2000);
+            }, 1000);
+            
+            // Notify user
+            setGameMessages(prev => [...prev, {
+              type: 'warning',
+              message: 'Connection issue detected, attempting to recover...'
+            }]);
+            
+            return; // Skip normal reconnect flow for this specific error
+          }
           
           // Only retry if under max attempts
           if (retryAttempts < maxRetries) {
@@ -122,7 +244,32 @@ export const MultiplayerProvider = ({ children }) => {
           console.error("Socket.io manager error:", error);
           setConnectionError(`IO manager error: ${error.message}`);
           
-          if (error.message.includes('timeout')) {
+          // Special handling for websocket errors
+          if (error.message.includes('websocket error')) {
+            console.log('Websocket error detected, attempting to recover connection...');
+            
+            // Force transport to polling first, then try to upgrade later
+            socketInstance.io.opts.transports = ['polling', 'websocket'];
+            
+            // Try immediate reconnect with polling transport
+            if (!socketInstance.connected) {
+              console.log('Reconnecting with polling transport...');
+              
+              // Close existing connection first
+              socketInstance.disconnect();
+              
+              // Wait a moment before reconnecting to allow cleanup
+              setTimeout(() => {
+                socketInstance.connect();
+              }, 1000);
+              
+              // Add a notification
+              setGameMessages(prev => [...prev, {
+                type: 'info',
+                message: 'Reconnecting to server...'
+              }]);
+            }
+          } else if (error.message.includes('timeout')) {
             console.log('Attempting to reconnect after timeout...');
             // Implement progressive delay for timeout reconnection
             let timeoutRetryCount = 0;
@@ -478,21 +625,175 @@ export const MultiplayerProvider = ({ children }) => {
     }]);
   };
   
-  // Add a new function to handle manual reconnection
+  // Enhanced reconnection method that handles session recovery
   const reconnectToServer = () => {
     if (socket) {
-      console.log('Manual reconnection attempt...');
-      // First close any existing connection
-      socket.close();
-      // Attempt to reconnect
+      console.log('Manually reconnecting to server...');
+      
+      // Store important game data before reconnecting
+      const gameData = currentGame ? {
+        roomId: currentGame.roomId,
+        gameType: currentGame.gameType,
+        state: gameState
+      } : null;
+      
+      // If we've seen a websocket error, try with polling first
+      if (connectionError && connectionError.includes('websocket error')) {
+        switchTransport('polling');
+      } else {
+        // Otherwise just reconnect with existing settings
+        socket.connect();
+      }
+      
+      // Notify user
+      setGameMessages(prev => [...prev, {
+        type: 'info',
+        message: 'Reconnecting to server...'
+      }]);
+      
+      return true;
+    }
+    
+    return false;
+  };
+  
+  // Add ping function to monitor connection health
+  const pingServer = () => {
+    if (socket && socket.connected) {
+      const startTime = Date.now();
+      socket.volatile.emit('ping', { timestamp: startTime }, () => {
+        const latency = Date.now() - startTime;
+        console.log(`Current latency: ${latency}ms`);
+        return latency;
+      });
+    }
+    return null;
+  };
+  
+  // Detect network changes and reconnect
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Network connection restored');
+      if (socket && !socket.connected) {
+        reconnectToServer();
+      }
+    };
+    
+    const handleOffline = () => {
+      console.log('Network connection lost');
+      setConnectionError('Network connection lost');
+      setIsConnected(false);
+    };
+    
+    // Set up event listeners for online/offline events
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [socket]);
+  
+  // Set up regular connection checking
+  useEffect(() => {
+    if (!socket) return;
+    
+    // Check connection health periodically
+    const connectionHealthCheck = setInterval(() => {
+      if (socket && !socket.connected && navigator.onLine) {
+        console.log('Socket disconnected but network available, attempting reconnect');
+        socket.connect();
+      }
+    }, 15000);
+    
+    return () => {
+      clearInterval(connectionHealthCheck);
+    };
+  }, [socket]);
+  
+  // Add a regular websocket health check
+  useEffect(() => {
+    if (!socket) return;
+    
+    // Check websocket health regularly
+    const websocketHealthCheck = setInterval(() => {
+      if (socket.connected) {
+        // Check the transport
+        const currentTransport = socket.io.engine?.transport?.name;
+        console.log(`Current transport: ${currentTransport}`);
+        
+        // If using polling for too long, try to upgrade to websocket
+        if (currentTransport === 'polling') {
+          const pollingStart = socket.io._pollingStartTime || Date.now();
+          const pollingDuration = Date.now() - pollingStart;
+          
+          // If we've been on polling for more than 2 minutes, try to upgrade
+          if (pollingDuration > 120000) {
+            console.log('Been on polling transport too long, attempting to upgrade to websocket');
+            socket.io._pollingStartTime = null; // Reset the timer
+            
+            // Try upgrading by disconnecting and reconnecting with websocket preference
+            switchTransport('websocket');
+          }
+        } else if (currentTransport === 'websocket') {
+          // If using websocket, store the time we started using it
+          if (!socket.io._websocketStartTime) {
+            socket.io._websocketStartTime = Date.now();
+          }
+        }
+      }
+    }, 60000); // Check every minute
+    
+    return () => {
+      clearInterval(websocketHealthCheck);
+    };
+  }, [socket, connectionError]);
+  
+  // Add a function to explicitly switch transport if needed
+  const switchTransport = (preferredTransport = 'polling') => {
+    if (!socket) return false;
+    
+    try {
+      console.log(`Manually switching transport to ${preferredTransport}`);
+      
+      // Disconnect first
+      socket.disconnect();
+      
+      // Modify the transport options
+      socket.io.opts.transports = preferredTransport === 'polling' 
+        ? ['polling', 'websocket'] 
+        : ['websocket', 'polling'];
+      
+      // Reconnect with new transport priority
       setTimeout(() => {
         socket.connect();
       }, 1000);
       
-      setConnectionError('Attempting to reconnect...');
       return true;
+    } catch (error) {
+      console.error('Error switching transport:', error);
+      return false;
     }
-    return false;
+  };
+  
+  const connectionStatus = () => {
+    if (!socket) return 'Not initialized';
+    
+    if (socket.connected) {
+      return {
+        connected: true,
+        transport: socket.io.engine?.transport?.name || 'unknown',
+        id: socket.id,
+        attempts: socket.io.reconnectionAttempts || 0
+      };
+    } else {
+      return {
+        connected: false,
+        reason: connectionError || 'Not connected',
+        attempting: socket.io.reconnecting || false
+      };
+    }
   };
   
   const value = {
@@ -511,7 +812,10 @@ export const MultiplayerProvider = ({ children }) => {
     makeMove,
     leaveGame,
     sendChatMessage,
-    reconnectToServer
+    reconnectToServer,
+    pingServer,
+    connectionStatus,
+    switchTransport
   };
   
   return (

@@ -23,6 +23,9 @@ import MultiplayerTicTacToe from "./components/multiplayer/MultiplayerTicTacToe.
 import MultiplayerChessPage from "./pages/MultiplayerChess.jsx";
 import { useAuth } from "./config/AuthContext.jsx";
 import { updateUserCoins } from "./services/authService.js";
+import FallbackConnection from './components/multiplayer/FallbackConnection';
+import FallbackClient from './components/multiplayer/FallbackClient';
+import ConnectionDebug from './components/debugging/ConnectionDebug';
 
 // Fallback component when app is loading or fails to load
 const AppFallback = ({ error }) => {
@@ -66,6 +69,7 @@ const App = () => {
   const { currentUser, userProfile, loading, error } = useAuth();
   const navigate = useNavigate();
   const [appError, setAppError] = useState(null);
+  const [showConnectionDebugger, setShowConnectionDebugger] = useState(false);
   
   // Debugging useEffect to track state changes
   useEffect(() => {
@@ -230,8 +234,33 @@ const App = () => {
     return <AppFallback />;
   }
 
+  // Add the connection debugger toggle function
+  const toggleConnectionDebugger = () => {
+    setShowConnectionDebugger(prev => !prev);
+  };
+
   return (
     <MultiplayerProvider>
+      {/* Add fallback components outside of Routes */}
+      <FallbackConnection />
+      <FallbackClient />
+      
+      {/* Conditionally show connection debugger */}
+      {showConnectionDebugger && <ConnectionDebug />}
+      
+      {/* Debug button */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <button
+          onClick={toggleConnectionDebugger}
+          className="bg-gray-800 text-white rounded-full p-2 shadow-lg hover:bg-gray-700"
+          title="Toggle Connection Debugger"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
+      
       <Routes>
         {/* If there's no user, render Login page */}
         <Route path="/" element={!isAuthenticated() ? <Login /> : <Navigate to="/home" />} />

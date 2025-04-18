@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import http from 'http';
+import { setupSocketProxy } from './middleware/socketProxy.js';
 
 // First try to use the global SocketIO
 let Server;
@@ -39,6 +40,7 @@ if (global.SocketIO) {
 // Import route modules but remove MongoDB dependency
 import authRoutes from './routes/auth.js';
 import paymentRoutes from './routes/payment.js';
+import fallbackRoutes from './routes/fallback.js';
 
 // Console log for debugging
 console.log('Server loaded, Socket.io Server available:', !!Server);
@@ -71,13 +73,49 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true
   },
-  pingTimeout: 30000, // Increase ping timeout to 30 seconds
-  pingInterval: 25000, // Ping clients every 25 seconds
-  transports: ['websocket', 'polling'], // Support both transport methods
-  connectTimeout: 20000, // Increase connection timeout
-  allowUpgrades: true, // Allow transport upgrades
-  maxHttpBufferSize: 1e8, // Increase buffer size for larger payloads
-  path: '/socket.io/', // Explicit path to avoid issues
+  pingTimeout: 60000, // Increased from 30000 to 60000
+  pingInterval: 25000,
+  transports: ['websocket', 'polling'], // Allow both transports with websocket preferred
+  connectTimeout: 45000, // Increased from 20000 to 45000
+  allowUpgrades: true,
+  maxHttpBufferSize: 1e8,
+  path: '/socket.io/',
+  // Added for better reconnection handling
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  randomizationFactor: 0.5,
+  // Add additional options for better websocket reliability
+  upgradeTimeout: 30000, // Give more time for upgrades
+  rememberUpgrade: true, // Remember successful transport upgrades
+  perMessageDeflate: {
+    threshold: 1024, // Only compress data above this size
+    zlibDeflateOptions: {
+      chunkSize: 1024,
+      level: 3 // Lower compression level for speed
+    }
+  }
+});
+
+// Add a global error handler for Socket.IO
+io.engine.on('connection_error', (err) => {
+  console.error('Socket.IO connection error:', err);
+});
+
+// Handle polling errors - these indicate transport issues
+io.engine.on('pollError', (err) => {
+  console.error('Socket.IO polling error:', err);
+});
+
+// Monitor websocket issues specifically
+io.engine.on('upgradeError', (err) => {
+  console.error('Socket.IO upgrade error:', err);
+});
+
+// Log all server-side socket errors
+io.on('error', (err) => {
+  console.error('Socket.IO server error:', err);
 });
 
 // Modified initialization with async IIFE - without MongoDB
@@ -101,9 +139,22 @@ function setupExpress() {
   app.use(cors({
     origin: '*', // Allow all origins
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    credentials: false
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'X-Client-Version', 'If-None-Match', 'Pragma'],
+    credentials: false,
+    maxAge: 86400 // Cache CORS preflight requests for 24 hours
   }));
+  
+  // Add cache control headers for polling requests
+  app.use((req, res, next) => {
+    // Avoid caching for socket.io polling requests
+    if (req.url.includes('/socket.io/')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    next();
+  });
+  
   app.use(express.json());
   app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
@@ -114,6 +165,9 @@ function setupExpress() {
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
   }));
+  
+  // Install the Socket.IO proxy middleware
+  setupSocketProxy(app);
   
   // Add error handling middleware
   app.use((err, req, res, next) => {
@@ -126,6 +180,34 @@ function setupExpress() {
 }
 
 function setupRoutes() {
+  // Add specific OPTIONS handler for socket.io requests
+  app.options('/socket.io/*', cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'X-Client-Version', 'If-None-Match', 'Pragma'],
+    credentials: true
+  }));
+  
+  // Add specific handler for socket.io polling
+  app.get('/socket.io/*', (req, res, next) => {
+    // Log polling requests for debugging
+    console.log('Socket.io polling request:', req.url);
+    console.log('Socket.io polling headers:', req.headers);
+    
+    // Set headers for CORS and caching
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
+    // If it's a preflight request, respond immediately
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
+      return;
+    }
+    
+    next();
+  });
+
   // Test route
   app.get('/', (req, res) => {
     res.json({ message: 'Server is running!' });
@@ -154,6 +236,7 @@ function setupRoutes() {
   // Routes
   app.use('/api/auth', authRoutes);
   app.use('/api/payment', paymentRoutes);
+  app.use('/api/fallback', fallbackRoutes);
   
   // Log all incoming requests for debugging
   app.use((req, res, next) => {
@@ -192,21 +275,124 @@ function setupSocketIO() {
       time: new Date().toISOString()
     });
     
+    // Log transport changes to help debug websocket issues
+    socket.conn.on('upgrade', (transport) => {
+      console.log(`Client ${socket.id} upgraded transport to: ${transport.name}`);
+    });
+    
+    // Log any socket warnings (often precedes errors)
+    socket.conn.on('warn', (warning) => {
+      console.warn(`Client ${socket.id} warning:`, warning);
+    });
+    
+    // Track transport errors specifically
+    socket.conn.transport.on('error', (error) => {
+      console.error(`Transport error for client ${socket.id}:`, error.message);
+    });
+    
     // Set up heartbeat to detect disconnects earlier
     const heartbeat = setInterval(() => {
       socket.volatile.emit('ping', { timestamp: Date.now() });
     }, 25000);
     
-    // Handle unexpected disconnects
+    // Handle pong response to confirm connection is still alive
+    socket.on('pong', (data) => {
+      console.log(`Received pong from ${socket.id}, latency: ${Date.now() - data.timestamp}ms`);
+    });
+    
+    // Add transport diagnostic endpoint
+    socket.on('connection_diagnostic', (callback) => {
+      // Gather transport information
+      const diagnosticInfo = {
+        socketId: socket.id,
+        connected: socket.connected,
+        transport: socket.conn.transport.name,
+        address: socket.handshake.address,
+        timestamp: Date.now(),
+        server: {
+          uptime: process.uptime(),
+          activeConnections: io.engine.clientsCount,
+          memoryUsage: process.memoryUsage(),
+          transportSupport: io.engine.opts.transports
+        }
+      };
+      
+      // Send diagnostic info back to client
+      callback(diagnosticInfo);
+    });
+    
+    // Improved disconnection handling with more detailed logging
     socket.on('disconnect', (reason) => {
       console.log(`Client ${socket.id} disconnected. Reason: ${reason}`);
       clearInterval(heartbeat);
-      handlePlayerDisconnect(socket.id);
+      
+      // Store disconnection info with timestamp for reconnection handling
+      socket.disconnectTime = Date.now();
+      socket.disconnectReason = reason;
+      
+      // Only clean up resources if it's a permanent disconnect
+      if (reason === 'transport close' || reason === 'ping timeout') {
+        // Wait a short period before cleanup to allow for quick reconnections
+        setTimeout(() => {
+          // Only proceed with cleanup if socket hasn't reconnected
+          if (!io.sockets.sockets.has(socket.id)) {
+            handlePlayerDisconnect(socket.id);
+          }
+        }, 10000); // Wait 10 seconds before cleanup
+      } else {
+        // For other disconnect reasons, clean up immediately
+        handlePlayerDisconnect(socket.id);
+      }
     });
     
-    // Add a reconnect event handler
+    // Enhanced reconnection handling
     socket.on('reconnect_attempt', (attemptNumber) => {
       console.log(`Client ${socket.id} reconnection attempt #${attemptNumber}`);
+    });
+    
+    socket.on('reconnect', () => {
+      console.log(`Client ${socket.id} reconnected successfully`);
+      
+      // Allow the client to recover their game session
+      socket.emit('reconnect_success', { 
+        socketId: socket.id,
+        timestamp: Date.now()
+      });
+    });
+    
+    socket.on('error', (error) => {
+      console.error(`Socket ${socket.id} error: ${error.message}`);
+    });
+    
+    // Add recovery mechanism for clients
+    socket.on('recover_session', (data) => {
+      const { userId, gameRoomId } = data;
+      console.log(`User ${userId} attempting to recover session in room ${gameRoomId}`);
+      
+      // Check if the game still exists
+      const game = activeGames.get(gameRoomId);
+      if (game) {
+        // Find the player in the game
+        const playerIndex = game.players.findIndex(p => p.userId === userId);
+        if (playerIndex !== -1) {
+          // Update the player's socket ID
+          game.players[playerIndex].socketId = socket.id;
+          
+          // Rejoin the room
+          socket.join(gameRoomId);
+          
+          // Send the current game state
+          socket.emit('game_recovered', {
+            roomId: gameRoomId,
+            gameType: game.gameType,
+            state: game.state,
+            players: game.players.map(p => ({ userId: p.userId, username: p.username })),
+            currentTurn: game.currentTurn
+          });
+          
+          console.log(`Session recovered for user ${userId} in room ${gameRoomId}`);
+        }
+      }
     });
     
     // When a user joins the matchmaking queue
