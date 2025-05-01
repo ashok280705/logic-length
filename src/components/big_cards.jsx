@@ -280,17 +280,17 @@ const BigCard = ({ title }) => {
         </div>
       </div>
 
-      <div id={`cards-container-${title}`} className={`hide-scrollbar snap-x py-4 ${showAll ? 'grid grid-cols-5 gap-4' : 'flex space-x-4 overflow-x-auto'}`}>
+      <div id={`cards-container-${title}`} className={`hide-scrollbar py-4 px-2 ${showAll ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3' : 'flex flex-nowrap overflow-x-auto space-x-4'}`}>
         {isLoading ? (
           // Loading skeleton cards
           Array(4).fill().map((_, index) => (
-            <div key={index} className="animate-pulse w-64 h-48 rounded-xl bg-gradient-to-br from-[#1a0050]/40 to-[#1a0050]/20 flex-shrink-0 snap-start"></div>
+            <div key={index} className="animate-pulse w-full sm:w-64 h-48 rounded-xl bg-gradient-to-br from-[#1a0050]/40 to-[#1a0050]/20 flex-shrink-0 snap-start"></div>
           ))
         ) : (
           displayedGames.map((game) => (
             <div
               key={game.id}
-              className={`game-card flip-card w-64 h-48 ${!showAll ? 'flex-shrink-0 snap-start' : ''} relative group cursor-pointer overflow-hidden rounded-xl transform transition-all duration-500 hover:scale-[1.03]`}
+              className={`game-card flip-card w-full sm:w-64 h-48 ${!showAll ? 'flex-shrink-0 snap-start' : ''} relative group cursor-pointer overflow-hidden rounded-xl transform transition-all duration-500 hover:scale-[1.03]`}
               onClick={() => navigateToGame(game.path)}
               onMouseEnter={() => setIsHovered(game.id)}
               onMouseLeave={() => setIsHovered(null)}

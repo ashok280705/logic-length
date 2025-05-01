@@ -325,7 +325,8 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
         ))}
       </div>
       
-      <div className="menu-section shrink-0 h-screen sticky top-0 z-20">
+      {/* Sidebar: always visible on desktop, hidden on mobile/tablet */}
+      <div className="menu-section shrink-0 h-screen sticky top-0 z-20 hidden lg:block">
         <Sidebar 
           initialZone={zoneMode} 
           onZoneChange={handleZoneChange} 
@@ -334,26 +335,26 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
       </div>
       
       <div className="content-section flex-1 bg-[#06013a] grid grid-rows-[auto_1fr_auto] min-h-screen pl-4 relative z-10">
-        <div className="grid1_col flex items-center justify-evenly bg-gradient-to-r from-[#0b001f] via-[#12002e] to-[#160041] p-6 rounded-bl-3xl relative overflow-hidden">
+        <div className="grid1_col flex flex-col lg:flex-row items-start justify-evenly min-h-[200px] bg-gradient-to-r from-[#0b001f] via-[#12002e] to-[#160041] p-6 rounded-bl-3xl relative">
           {/* Animated background patterns */}
-          <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI4IiBjeT0iOCIgcj0iMiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=')] bg-repeat animate-pulse"></div>
           </div>
           
-          {/* Enhanced dynamic user profile card */}
-          <div className="max-w-[350px] w-full rounded-xl bg-gradient-to-t from-[#0a0119] to-[#170045] border-[3px] border-[#2c0b7a] shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] transition-all duration-500 transform hover:-translate-y-1 grid grid-rows-[1fr_2fr] overflow-hidden group">
+          {/* Enhanced dynamic user profile card - always on top and visible */}
+          <div className="max-w-[350px] w-full rounded-xl bg-[#1a0050]/80 bg-gradient-to-t from-[#0a0119] to-[#170045] border-4 border-white shadow-2xl hover:shadow-[0_0_40px_rgba(139,92,246,0.7)] transition-all duration-500 transform hover:-translate-y-1 grid grid-rows-[1fr_2fr] overflow-hidden group mb-8 lg:mb-0 z-10 ml-0 lg:mx-auto">
             <div className="row-1 flex items-center justify-between px-5 py-3">
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-white font-bold text-lg border-2 border-white/20">
                   {userData?.username ? userData.username.charAt(0).toUpperCase() : 'A'}
                 </div>
-                <div>
-                  <p className="text-white text-xl font-semibold gradient-text">
+                <div className="min-w-0">
+                  <p className="text-white text-xl font-semibold gradient-text truncate max-w-[120px] sm:max-w-[180px] md:max-w-[220px] lg:max-w-none text-[1.3rem] sm:text-2xl lg:text-xl" style={{lineHeight: '1.2'}}>
                     {userData?.username || "Anuj Mayekar"}
                   </p>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 mt-1">
                     <span className={`h-2 w-2 rounded-full ${getStatusColor(userStatus)} animate-pulse`}></span>
-                    <span className="text-xs text-gray-300 capitalize">{userStatus}</span>
+                    <span className="text-xs text-gray-300 capitalize truncate max-w-[60px]">{userStatus}</span>
                   </div>
                 </div>
               </div>
@@ -399,34 +400,25 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
             <div className="absolute inset-0 border-2 border-transparent group-hover:border-purple-500/50 rounded-xl pointer-events-none transition-all duration-500"></div>
           </div>
           
-          {/* Enhanced category cards with proper spacing and responsive sizing */}
-          <div className="flex gap-8 justify-center flex-1">
-            <div className="transform hover:scale-105 transition-all duration-300 relative group max-w-[300px] w-full">
+          {/* Multiplayer and Single Player cards: always below profile card */}
+          <div className="flex flex-col gap-6 w-full px-2 lg:flex-row lg:gap-8 lg:w-auto lg:px-0 order-2">
+            <div className="w-full lg:max-w-[300px] transform hover:scale-105 transition-all duration-300 relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl blur opacity-30 group-hover:opacity-70 transition duration-500"></div>
               <div className="relative z-20">
                 <Cards1 
                   image="multiplayer.webp" 
                   title="MULTIPLAYER" 
-                  games={[
-                    { name: "Chess", path: "/chess", cost: 10 },
-                    { name: "Tic Tac Toe", path: "/tictactoe", cost: 5 },
-                    { name: "Rock Paper Scissors", path: "/mines-plinko", cost: 15 }
-                  ]}
+                  games={[{ name: "Chess", path: "/chess", cost: 10 }, { name: "Tic Tac Toe", path: "/tictactoe", cost: 5 }, { name: "Rock Paper Scissors", path: "/mines-plinko", cost: 15 }]} 
                 />
               </div>
             </div>
-            
-            <div className="transform hover:scale-105 transition-all duration-300 relative group max-w-[300px] w-full">
+            <div className="w-full lg:max-w-[300px] transform hover:scale-105 transition-all duration-300 relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur opacity-30 group-hover:opacity-70 transition duration-500"></div>
               <div className="relative z-20">
                 <Cards1 
                   image="single.webp" 
                   title="SINGLE PLAYER" 
-                  games={[
-                    { name: "Snake & Ladder", path: "/snakes", cost: 5 },
-                    { name: "Snail Race", path: "/snail-race", cost: 10 },
-                    { name: "Dice", path: "/game6", cost: 10 }
-                  ]}
+                  games={[{ name: "Snake & Ladder", path: "/snakes", cost: 5 }, { name: "Snail Race", path: "/snail-race", cost: 10 }, { name: "Dice", path: "/game6", cost: 10 }]} 
                 />
               </div>
             </div>
@@ -444,14 +436,14 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
             <h2 className="text-3xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 animate-pulse">
               Game Coin Requirements
             </h2>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Object.entries(gameCosts).map(([game, cost]) => (
                 <div 
                   key={game} 
-                  className="bg-[#1a0050]/40 p-3 rounded-xl border border-purple-500/30 hover:border-purple-500/70 transition-all duration-300 shadow-md hover:shadow-[0_4px_15px_rgba(139,92,246,0.3)] transform hover:scale-105 group"
+                  className="bg-[#1a0050]/40 p-3 rounded-xl border border-purple-500/30 hover:border-purple-500/70 transition-all duration-300 shadow-md hover:shadow-[0_4px_15px_rgba(139,92,246,0.3)] transform hover:scale-105 group min-w-0"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="text-white font-medium capitalize text-lg group-hover:text-purple-300 transition-colors duration-300">
+                  <div className="flex items-center justify-between min-w-0">
+                    <div className="text-white font-medium capitalize text-lg group-hover:text-purple-300 transition-colors duration-300 truncate min-w-0 max-w-[70%]">
                       {game.replace('-', ' ')}
                     </div>
                     <div className="flex items-center">
@@ -459,6 +451,12 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
                       <span className="text-xs text-purple-300">COINS</span>
                     </div>
                   </div>
+                  <button
+                    className="mt-3 w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:from-purple-500 hover:to-pink-500 transition-all duration-300"
+                    onClick={() => navigate(`/${game}`)}
+                  >
+                    Play
+                  </button>
                 </div>
               ))}
             </div>

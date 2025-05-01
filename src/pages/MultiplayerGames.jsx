@@ -19,22 +19,24 @@ const MultiplayerGames = ({ games }) => {
   const displayGames = games || defaultGames;
 
   return (
-    <div className="min-h-screen bg-[#0c0124]">
+    <div className="min-h-screen bg-[#0c0124] pt-14 lg:pt-0">
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-10">
-          <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
-            MULTIPLAYER GAMES
-          </h1>
-          <button 
-            onClick={() => navigate("/home")}
-            className="bg-purple-600/50 hover:bg-purple-600/70 text-white py-2 px-4 rounded-lg transition-colors flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            Back to Home
-          </button>
+        <div className="mb-10">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+            <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+              MULTIPLAYER GAMES
+            </h1>
+            <button 
+              onClick={() => navigate("/home")}
+              className="bg-purple-600/50 hover:bg-purple-600/70 text-white py-2 px-4 rounded-lg transition-colors flex items-center mt-2 w-full text-center md:mt-0 md:w-auto md:ml-4"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Back to Home
+            </button>
+          </div>
         </div>
         
         {/* Content area */}

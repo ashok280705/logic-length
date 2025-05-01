@@ -17,7 +17,7 @@ const Cards1 = (props) => {
   return (
     <button 
       onClick={navigateToGames}
-      className="w-[20vw] h-[40vh] bg-gradient-to-b from-[#170045] to-[#06013a] rounded-xl overflow-hidden shadow-lg hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] transition-all duration-300 border-2 border-purple-500/20 hover:border-purple-500/40 focus:outline-none"
+      className="w-full max-w-xs h-[40vh] bg-gradient-to-b from-[#170045] to-[#06013a] rounded-xl overflow-hidden shadow-lg hover:shadow-[0_0_25px_rgba(139,92,246,0.5)] transition-all duration-300 border-2 border-purple-500/20 hover:border-purple-500/40 focus:outline-none lg:w-[20vw] lg:max-w-none"
     >
       <div className="h-3/4 flex items-center justify-center p-3">
         <img 

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Payment from "./Payment";
 import { logoutUser, getUserDataFromFirebase } from "../services/authService.js";
 import { useAuth } from "../config/AuthContext";
+import "./Navbar.css"; // Make sure you have a CSS file for styling
+import Sidebar from './sidebar';
 
 const Navbar = ({ onLogout, user }) => {
   const navigate = useNavigate();
@@ -19,6 +21,8 @@ const Navbar = ({ onLogout, user }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [activeZone, setActiveZone] = useState('coin'); // Default to coin zone for direct payments
   const [dataInitialized, setDataInitialized] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
 
   // Get auth context
   const { userProfile } = useAuth();
@@ -424,57 +428,141 @@ const Navbar = ({ onLogout, user }) => {
     setShowPayment(true);
   };
 
+  const handleToggle = () => setIsOpen(!isOpen);
+
   return (
     <>
-      <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'shadow-lg' : ''}`}>
-        <nav className={`h-[9vh] flex justify-between items-center border-b border-[#0b0c33] ${scrolled ? 'bg-[#150832]/95' : 'bg-[#150832]'} backdrop-blur-sm transition-all duration-500`}>
-          <div className="menu h-[9vh] w-[4.8vw] flex justify-center items-center bg-[#111134] hover:bg-[#0d0d2a] transition-all duration-300 pulse-effect relative menu-container">
-            <button 
-              className="menu-btn cursor-pointer p-2 hover:scale-110 transition-transform duration-200"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+      {/* Mobile & Tablet Navbar */}
+      <nav className="fixed top-0 left-0 w-full h-14 bg-[#150832] flex items-center justify-between px-3 shadow-lg z-50 lg:hidden">
+        <div className="flex items-center gap-2">
+          <button
+            aria-label="Open menu"
+            className="p-2 rounded-full hover:bg-[#23234a] focus:outline-none"
+            onClick={() => setShowSidebar(true)}
+          >
+            <img src="menu.svg" alt="menu" className="h-6 w-6" />
+          </button>
+          <img src="logo.png" alt="logo" className="h-8" onClick={() => navigate('/home')} />
+        </div>
+        <div className="flex items-center gap-3">
+          <button aria-label="Wallet" className="flex items-center bg-[#23234a] rounded-full px-2 py-1" onClick={openPaymentModal}>
+            <img src="wallet.svg" alt="wallet" className="h-5 mr-1" />
+            <span className="text-white text-sm font-bold">{currentUser?.coins || user?.coins || 0}</span>
+          </button>
+          <button aria-label="Search" onClick={() => setShowSearchResults(true)}><img src="search.svg" alt="search" className="h-6" /></button>
+          <button aria-label="Notifications" onClick={toggleNotifications}><img src="notification.svg" alt="notifications" className="h-6" /></button>
+          <button aria-label="Profile" onClick={toggleProfileDropdown}><img src="profile.svg" alt="profile" className="h-6" /></button>
+        </div>
+      </nav>
+
+      {/* Mobile/Tablet Sidebar Slide-in */}
+      {showSidebar && (
+        <div className="fixed inset-0 z-[9999] flex flex-row lg:hidden">
+          {/* Sidebar on the left */}
+          <div className="w-72 max-w-full h-full bg-[#120133] shadow-2xl animate-slideInLeft relative">
+            <button
+              className="absolute top-4 right-4 text-white text-2xl z-10"
+              onClick={() => setShowSidebar(false)}
+              aria-label="Close menu"
             >
-              <img src="menu.svg" alt="menu" width="25px" className="filter brightness-200" />
+              &times;
             </button>
-            
-            {/* Quick menu popup */}
-            {isMenuOpen && (
-              <div className="absolute top-full left-0 w-64 bg-gradient-to-b from-[#1a0050] to-[#09001a] rounded-b-xl shadow-2xl transform transition-all duration-300 scale-100 opacity-100 animate-glow z-50 p-4 futuristic-border">
-                <div className="flex flex-col space-y-3">
-                  <button className="text-left px-4 py-3 text-white hover:bg-[#2a1664] rounded-lg transition-all duration-200 flex items-center">
-                    <img src="profile.svg" alt="profile" className="h-5 w-5 mr-3" />
-                    <span>My Profile</span>
-                  </button>
-                  <button className="text-left px-4 py-3 text-white hover:bg-[#2a1664] rounded-lg transition-all duration-200 flex items-center">
-                    <img src="notification.svg" alt="notifications" className="h-5 w-5 mr-3" />
-                    <span>Notifications</span>
-                  </button>
-                  <button 
-                    className="text-left px-4 py-3 text-white hover:bg-[#2a1664] rounded-lg transition-all duration-200 flex items-center"
-                    onClick={openPaymentModal}
-                  >
-                    <img src="wallet.svg" alt="wallet" className="h-5 w-5 mr-3" />
-                    <span>Add Coins</span>
-                  </button>
-                  <div className="my-2 border-t border-[#2c0b7a]/30"></div>
-                  <button 
-                    className="text-left px-4 py-3 text-white hover:bg-[#2a1664] rounded-lg transition-all duration-200 flex items-center" 
-                    onClick={handleLogout}
-                  >
-                    <img src="logout.svg" alt="logout" className="h-5 w-5 mr-3" />
-                    <span>Logout</span>
-                  </button>
+            <Sidebar />
+          </div>
+          {/* Overlay fills the rest */}
+          <div className="flex-1 bg-black/60" onClick={() => setShowSidebar(false)}></div>
+        </div>
+      )}
+      <style jsx>{`
+        @keyframes slideInLeft {
+          0% { transform: translateX(-100%); opacity: 1; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slideInLeft {
+          animation: slideInLeft 0.3s cubic-bezier(0.4,0,0.2,1) forwards;
+        }
+      `}</style>
+
+      {/* Mobile & Tablet Search Modal */}
+      {showSearchResults && (
+        <div className="fixed inset-0 z-[9999] bg-black/70 flex flex-col items-center justify-start pt-20 px-4 lg:hidden">
+          <div className="w-full max-w-md bg-[#1a0050] rounded-xl shadow-2xl border border-[#6320dd]/40 p-4 relative">
+            <button className="absolute top-2 right-2 text-white text-2xl" onClick={() => setShowSearchResults(false)} aria-label="Close search">&times;</button>
+            <input
+              type="text"
+              placeholder="Search games..."
+              value={searchQuery}
+              onChange={handleSearch}
+              autoFocus
+              className="py-3 pl-12 pr-4 bg-[#2a1664]/40 border border-[#6320dd]/40 rounded-full text-white focus:outline-none focus:ring-2 focus:ring-[#6320dd] w-full transition-all duration-300 text-lg mb-4"
+            />
+            <img src="search.svg" alt="search" className="h-6 w-6 absolute left-6 top-7 transform -translate-y-1/2" />
+            {/* Search results dropdown (reuse existing logic) */}
+            <div className="max-h-80 overflow-y-auto">
+              {isSearching ? (
+                <div className="p-4 text-center">
+                  <div className="w-6 h-6 border-t-2 border-r-2 border-purple-500 rounded-full animate-spin mx-auto"></div>
+                  <p className="text-purple-300 mt-2 text-sm">Searching games...</p>
                 </div>
-              </div>
-            )}
+              ) : searchResults.length === 0 && searchQuery.trim() !== '' ? (
+                <div className="p-4 text-center">
+                  <p className="text-gray-400">No games found for "{searchQuery}"</p>
+                </div>
+              ) : (
+                <div>
+                  {searchResults.map(game => (
+                    <div 
+                      key={game.id}
+                      onClick={() => { setShowSearchResults(false); navigateToGame(game.id); }}
+                      className="p-3 hover:bg-[#2a1664] transition-all duration-200 cursor-pointer border-b border-[#2c0b7a]/10 last:border-0 flex items-center"
+                    >
+                      <div className="w-10 h-10 rounded bg-[#2c0b7a]/20 overflow-hidden mr-3 flex items-center justify-center">
+                        {game.image ? (
+                          <img src={game.image} alt={game.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-white font-bold">
+                            {game.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-white font-medium">{game.name}</p>
+                        <p className="text-[#b69fff] text-xs capitalize">{game.category}</p>
+                      </div>
+                      <div className="flex items-center text-yellow-300 ml-2">
+                        <span className="text-sm font-semibold">{game.coins}</span>
+                        <span className="text-xs ml-1">COINS</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Navbar (unchanged) */}
+      <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'shadow-lg' : ''} hidden lg:block`}>
+        <nav className={`h-[9vh] flex justify-between items-center border-b border-[#0b0c33] ${scrolled ? 'bg-[#150832]/95' : 'bg-[#150832]'} backdrop-blur-sm transition-all duration-500`}>
+          {/* Hamburger menu for mobile - bigger and thumb-friendly */}
+          <div className="menu h-[9vh] w-[16vw] flex justify-center items-center bg-[#111134] hover:bg-[#0d0d2a] transition-all duration-300 pulse-effect relative menu-container md:hidden">
+            <button 
+              className="menu-btn cursor-pointer p-4 rounded-full bg-[#23234a]/80 hover:bg-[#2a1664] shadow-lg flex items-center justify-center transition-transform duration-200"
+              style={{ minWidth: 56, minHeight: 56 }}
+              onClick={handleToggle}
+              aria-label="Open menu"
+            >
+              <img src="menu.svg" alt="menu" width="32px" className="filter brightness-200" />
+            </button>
           </div>
 
-          <div className="main_nav w-[96vw] h-[9vh] bg-[#150832] flex items-center relative overflow-hidden">
+          {/* Main nav-content: hidden on mobile, flex on md+ */}
+          <div className="main_nav w-[96vw] h-[9vh] bg-[#150832] items-center relative overflow-hidden hidden md:flex">
             {/* Grid overlay pattern */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,_rgba(99,32,221,0.1)_1px,_transparent_1px),_linear-gradient(to_bottom,_rgba(99,32,221,0.1)_1px,_transparent_1px)] bg-[size:20px_20px]"></div>
-            
             {/* Subtle glow effect */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(139,92,246,0.3)_0%,_transparent_70%)]"></div>
-            
             <div className="nav-content w-full flex justify-between items-center px-8 relative z-10">
               <div className="logo w-[11vw] flex justify-center perspective-container">
                 <img 
@@ -647,85 +735,6 @@ const Navbar = ({ onLogout, user }) => {
           </div>
         </nav>
       </header>
-
-      {/* Profile Dropdown Portal - Moved outside the navbar */}
-      {showProfileDropdown && (
-        <div 
-          className="fixed top-[9vh] right-4 w-[240px] bg-[#150038] rounded-xl shadow-2xl transform transition-all duration-300 scale-100 opacity-100 origin-top-right z-[9999] border border-[#2c0b7a]/50 overflow-hidden animate-fadeIn"
-          onClick={(e) => e.stopPropagation()} // Stop propagation for the dropdown container
-        >
-          <div className="bg-[#150038] p-4 border-b border-[#2c0b7a]/30">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#6320dd] flex items-center justify-center text-white font-bold text-lg">
-                {currentUser?.username?.[0] || user?.username?.[0] || 'A'}
-              </div>
-              <div>
-                <p className="text-white font-medium">{currentUser?.username || user?.username || 'User'}</p>
-                <p className="text-[#b69fff] text-xs">Premium</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="py-2">
-            <div 
-              className="w-full text-left px-4 py-3 text-white hover:bg-[#2a1664] transition-all duration-200 cursor-pointer"
-              onClick={() => {
-                setShowProfileDropdown(false);
-                navigate("/profile-settings");
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <img src="profile.svg" alt="profile" className="h-5 w-5" />
-                </div>
-                <span>Profile Settings</span>
-              </div>
-            </div>
-            
-            <div 
-              className="w-full text-left px-4 py-3 text-white hover:bg-[#2a1664] transition-all duration-200 cursor-pointer"
-              onClick={() => {
-                setShowProfileDropdown(false);
-                navigate("/game-history");
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <img src="history.svg" alt="history" className="h-5 w-5" />
-                </div>
-                <span>Game History</span>
-              </div>
-            </div>
-            
-            <div 
-              className="w-full text-left px-4 py-3 text-white hover:bg-[#2a1664] transition-all duration-200 cursor-pointer"
-              onClick={() => {
-                setShowProfileDropdown(false);
-                navigate("/transaction-history");
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <img src="wallet.svg" alt="wallet" className="h-5 w-5" />
-                </div>
-                <span>Transaction History</span>
-              </div>
-            </div>
-            
-            <div className="my-2 border-t border-[#2c0b7a]/30"></div>
-            
-            <button 
-              className="w-full text-left px-4 py-3 text-white hover:bg-[#2a1664] transition-all duration-200 flex items-center gap-3" 
-              onClick={handleLogout}
-            >
-              <div className="w-6 h-6 flex items-center justify-center">
-                <img src="logout.svg" alt="logout" className="h-5 w-5" />
-              </div>
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {showPayment && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">

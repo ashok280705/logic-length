@@ -293,7 +293,9 @@ const App = () => {
             isAuthenticated() ? (
               <>
                 <Navbar />
-                <Main_bar gameCosts={GAME_COSTS} />
+                <div className="pt-14 lg:pt-0">
+                  <Main_bar gameCosts={GAME_COSTS} />
+                </div>
               </>
             ) : (
               <Navigate to="/login" />
