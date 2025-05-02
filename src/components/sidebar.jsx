@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SidebarComponents from './sidebar_components'
 import SidebarSmallComp from './sidebar_small_comp'
+import { logoutUser } from '../services/authService'
 
 const Sidebar = ({ initialZone = 'coin', onZoneChange, onOpenPayment }) => {
   const navigate = useNavigate();
@@ -93,6 +94,19 @@ const Sidebar = ({ initialZone = 'coin', onZoneChange, onOpenPayment }) => {
       navigate('/premium');
     } else if (itemName === 'Rewards') {
       navigate('/rewards');
+    }
+  };
+
+  // Add logout handler
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      localStorage.removeItem('user');
+      localStorage.removeItem('currentUser');
+      navigate('/');
     }
   };
 
@@ -505,6 +519,20 @@ const Sidebar = ({ initialZone = 'coin', onZoneChange, onOpenPayment }) => {
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
             <p className="text-xs text-purple-300/70">v1.0.2</p>
           </div>
+        </div>
+
+        {/* Logout button */}
+        <div className="mt-2 pt-3 pb-4 flex flex-col items-center">
+          <button
+            onClick={handleLogout}
+            className="w-full max-w-xs py-3 px-4 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 transition-all duration-300"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18 12H9m0 0l3-3m-3 3l3 3" />
+            </svg>
+            Logout
+          </button>
         </div>
       </div>
     </div>
