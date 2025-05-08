@@ -401,8 +401,8 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
           </div>
           
           {/* Multiplayer and Single Player cards: always below profile card */}
-          <div className="flex flex-col gap-6 w-full px-2 lg:flex-row lg:gap-8 lg:w-auto lg:px-0 order-2">
-            <div className="w-full lg:max-w-[300px] transform hover:scale-105 transition-all duration-300 relative group">
+          <div className="flex flex-col gap-6 w-full px-2 lg:flex-row lg:justify-center lg:gap-12 lg:px-0 order-2 mt-4">
+            <div className="w-full lg:w-auto transform hover:scale-105 transition-all duration-300 relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl blur opacity-30 group-hover:opacity-70 transition duration-500"></div>
               <div className="relative z-20">
                 <Cards1 
@@ -412,7 +412,7 @@ const MainBar = ({ gameCosts = {}, initialZone = 'coin', onZoneChange }) => {
                 />
               </div>
             </div>
-            <div className="w-full lg:max-w-[300px] transform hover:scale-105 transition-all duration-300 relative group">
+            <div className="w-full lg:w-auto transform hover:scale-105 transition-all duration-300 relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur opacity-30 group-hover:opacity-70 transition duration-500"></div>
               <div className="relative z-20">
                 <Cards1 
